@@ -7,6 +7,7 @@ import requests
 import soundfile as sf
 import speech_recognition as sr
 from flask import Flask, jsonify, request
+import json
 
 app = Flask(__name__)
 
@@ -21,12 +22,16 @@ whatsapp_token = os.environ.get("WHATSAPP_TOKEN")
 verify_token = os.environ.get("VERIFY_TOKEN")
 
 # Message log dictionary to enable conversation over multiple messages
-message_log_dict = {}
+if not os.path.exists("message_logs.json"):
+    json.dump({}, open("message_logs.json", "w+"))
+message_log_dict = json.load(open("message_logs.json"))
 
 
 # language for speech to text recoginition
 # TODO: detect this automatically based on the user's language
 LANGUGAGE = "en-US"
+
+INITIAL_PROMPT = open("initial_prompt.txt").read()
 
 
 # get the media url from the media id
@@ -107,12 +112,13 @@ def send_whatsapp_message(body, message):
 def update_message_log(message, phone_number, role):
     initial_log = {
         "role": "system",
-        "content": "You are a helpful assistant named WhatsBot.",
+        "content": INITIAL_PROMPT,
     }
     if phone_number not in message_log_dict:
         message_log_dict[phone_number] = [initial_log]
     message_log = {"role": role, "content": message}
     message_log_dict[phone_number].append(message_log)
+    json.dump(message_log_dict, open("message_logs.json", "w+"))
     return message_log_dict[phone_number]
 
 
@@ -126,9 +132,9 @@ def make_openai_request(message, from_number):
     try:
         message_log = update_message_log(message, from_number, "user")
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=message_log,
-            temperature=0.7,
+            temperature=1.0,
         )
         response_message = response.choices[0].message.content
         print(f"openai response: {response_message}")
@@ -228,8 +234,10 @@ def webhook():
 def reset():
     global message_log_dict
     message_log_dict = {}
+    json.dump({}, open("message_logs.json", "w+"))
     return "Message log resetted!"
 
 
 if __name__ == "__main__":
+    
     app.run(debug=True, use_reloader=True)
