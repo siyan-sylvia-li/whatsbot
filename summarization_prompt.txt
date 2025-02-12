@@ -1,0 +1,1 @@
+Summarize the following conversation between a user and a physical activity counselor. Use bullet points, separated by \n. Include beliefs expressed by the user. Provide the summary bullet points directly.

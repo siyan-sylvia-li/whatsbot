@@ -8,6 +8,8 @@ import soundfile as sf
 import speech_recognition as sr
 from flask import Flask, jsonify, request
 import json
+import copy
+from scheduler import schedule_job, cancel_job
 
 app = Flask(__name__)
 
@@ -26,12 +28,26 @@ if not os.path.exists("message_logs.json"):
     json.dump({}, open("message_logs.json", "w+"))
 message_log_dict = json.load(open("message_logs.json"))
 
+# Session logs
+if not os.path.exists("session_logs.json"):
+    json.dump({}, open("session_logs.json", "w+"))
+session_log_dict = json.load(open("session_logs.json"))
+
+# User JSON body template
+if not os.path.exists("user_templates.json"):
+    json.dump({}, open("user_templates.json", "w+"))
+user_template_dict = json.load(open("user_templates.json"))
+
+user_job_dict = {}
+
 
 # language for speech to text recoginition
 # TODO: detect this automatically based on the user's language
 LANGUGAGE = "en-US"
 
 INITIAL_PROMPT = open("initial_prompt.txt").read()
+SUMMARY_PROMPT = open("summarization_prompt.txt").read()
+PING_PROMPT = open("ping_prompt.txt").read()
 
 
 # get the media url from the media id
@@ -103,6 +119,8 @@ def send_whatsapp_message(body, message):
         "type": "text",
         "text": {"body": message},
     }
+    user_template_dict.update({from_number: body})
+    json.dump(user_template_dict, open("user_templates.json", "w+"))
     response = requests.post(url, json=data, headers=headers)
     print(f"whatsapp message response: {response.json()}")
     response.raise_for_status()
@@ -115,16 +133,25 @@ def update_message_log(message, phone_number, role):
         "content": INITIAL_PROMPT,
     }
     if phone_number not in message_log_dict:
-        message_log_dict[phone_number] = [initial_log]
+        message_log_dict[phone_number] = {"current_session": [initial_log]}
+    if phone_number not in session_log_dict:
+        session_log_dict[phone_number] = {
+            "current_session": 1,
+            "session_summaries": []
+        }
+    if phone_number not in user_job_dict:
+        user_job_dict.update({
+            phone_number: -1
+        })
     message_log = {"role": role, "content": message}
-    message_log_dict[phone_number].append(message_log)
+    message_log_dict[phone_number]["current_session"].append(message_log)
     json.dump(message_log_dict, open("message_logs.json", "w+"))
-    return message_log_dict[phone_number]
+    return message_log_dict[phone_number]["current_session"]
 
 
 # remove last message from log if OpenAI request fails
 def remove_last_message_from_log(phone_number):
-    message_log_dict[phone_number].pop()
+    message_log_dict[phone_number]["current_session"].pop()
 
 
 # make request to OpenAI
@@ -145,17 +172,54 @@ def make_openai_request(message, from_number):
         remove_last_message_from_log(from_number)
     return response_message
 
+# Handle the specific case of pinging user
+def create_ping(from_number):
+    ping_msg = PING_PROMPT.replace("NUM_SESSIONS", session_log_dict[from_number]["current_session"])
+    if session_log_dict[from_number]["current_session"] > 1:
+        ping_msg = ping_msg.replace("SESSION_SINGULAR_PLURAL", "sessions")
+    else:
+        ping_msg = ping_msg.replace("SESSION_SINGULAR_PLURAL", "session")
+    ping_msg = ping_msg.replace("SESSION_SUMMARY", session_log_dict[from_number]["session_summaries"][-1])
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": ping_msg}],
+            temperature=1.0,
+        )
+        response_message = response.choices[0].message.content
+        print(f"openai response: {response_message}")
+        update_message_log(response_message, from_number, "assistant")
+        session_log_dict[from_number]["current_session"] += 1
+        json.dump(session_log_dict, open("session_logs.json", "w+"))
+    except Exception as e:
+        print(f"openai error: {e}")
+        response_message = "Sorry, the OpenAI API is currently overloaded or offline. Please try again later."
+        remove_last_message_from_log(from_number)
+    return response_message
+
 
 # handle WhatsApp messages of different type
 def handle_whatsapp_message(body):
     message = body["entry"][0]["changes"][0]["value"]["messages"][0]
     if message["type"] == "text":
+        # TODO: Have a specific case for CRON triggers
         message_body = message["text"]["body"]
+        if message_body == "PING USER":
+            # When pinging, incorporate previous user session
+            response = create_ping(message["from"])
+            send_whatsapp_message(body, response)
+            return
     elif message["type"] == "audio":
         audio_id = message["audio"]["id"]
         message_body = handle_audio_message(audio_id)
     response = make_openai_request(message_body, message["from"])
     send_whatsapp_message(body, response)
+    if user_job_dict[message["from"]] == -1:
+        # Set up scheduling
+        new_job_num = schedule_job(f"python3 ~/Documents/sony_bot/whatsbot/notifier.py --ping --user_number={message["from"]}", "24 hours")
+        user_job_dict.update({message["from"]: new_job_num})
+        new_job_num = schedule_job(f"python3 ~/Documents/sony_bot/whatsbot/notifier.py --summarize --user_number={message["from"]}", "23 hours")
+
 
 
 # handle incoming webhook messages
@@ -214,6 +278,18 @@ def verify(request):
         return jsonify({"status": "error", "message": "Missing parameters"}), 400
 
 
+def format_conversation(msgs):
+    msg_str = ""
+    for m in msgs:
+        if "role" not in m or m["role"] == "system":
+            continue
+        if m["role"] == "assistant":
+            msg_str += "Counselor: " + m["content"] + "\n"
+        else:
+            msg_str += "User: " + m["content"] + "\n"
+    return msg_str
+
+
 # Sets homepage endpoint and welcome message
 @app.route("/", methods=["GET"])
 def home():
@@ -236,6 +312,41 @@ def reset():
     message_log_dict = {}
     json.dump({}, open("message_logs.json", "w+"))
     return "Message log resetted!"
+
+
+@app.route("/summarize", methods=["GET"])
+def summarize_session():
+    phone_number = request.args.get("phone_number")
+    print("Obtained phone number", phone_number)
+    current_session_messages = []
+    
+    if len(curr_msg = message_log_dict[phone_number]["current_session"]):
+        ind = len(message_log_dict[phone_number]["current_session"]) - 1
+        curr_msg = message_log_dict[phone_number]["current_session"][ind]
+        while curr_msg != "||" and ind >= 0:
+            current_session_messages.insert(0, curr_msg)
+            curr_msg = message_log_dict[phone_number]["current_session"][ind]
+            ind = ind - 1
+        formatted_convo = format_conversation(current_session_messages)
+        response = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": SUMMARY_PROMPT + "\n\n" + formatted_convo}],
+                temperature=1.0,
+            )
+        response_message = response.choices[0].message.content
+        print(response_message)
+        if phone_number in session_log_dict:
+            session_log_dict[phone_number]["session_summaries"].append(response_message)
+        session_num = f"session_{session_log_dict[phone_number]["current_session"]}"
+        message_log_dict[phone_number].update({
+            session_num: copy.copy(message_log_dict[phone_number]["current_session"])
+        })
+        message_log_dict[phone_number]["current_session"] = []
+        json.dump(session_log_dict, open("session_logs.json", "w+"))
+        json.dump(message_log_dict, open("message_logs.json", "w+"))
+    user_job_dict.update({phone_number: -1})
+    return f"Session summarized for {phone_number}!"
+    
 
 
 if __name__ == "__main__":
