@@ -390,7 +390,7 @@ def summarize_session():
         print(response_message)
         if phone_number in session_log_dict:
             session_log_dict[phone_number]["session_summaries"].append(response_message)
-        session_num = f"session_{session_log_dict[phone_number]["current_session"]}"
+        session_num = f"session_" + str(session_log_dict[phone_number]["current_session"])
         message_log_dict[phone_number].update({
             session_num: copy.copy(message_log_dict[phone_number]["current_session"])
         })
