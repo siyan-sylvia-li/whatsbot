@@ -1,0 +1,25 @@
+negative_feelings_explicit: EXPLICIT EXPRESSIONS OF NEGATIVE FEELINGS, such as an emotive behaviour or a mental state
+Examples: I am sad; I cried/shook/shouted... (emotive behavior); I felt alone/imagined the worst/thought I would die/remembered the pain/hated the pills (mental state); I cried when I found out
+
+negative_feelings_implicit: IMPLICIT EXPRESSION OF NEGATIVE FEELINGS through reference to a negative experience, such as fear, confusion, anxiety, or sadness
+Examples: I could not see any colours and everything was fuzzy (afraid/confused); I still had not received the letter from the hospital (anxious); I'm in the process of retiring... I will be 66 in February (anxious/sad); It's been 3 days and I haven't heard back from my GP
+
+negative_judgment_explicit: EXPLICIT EXPRESSION OF NEGATIVE JUDGEMENT (others or self)
+Examples: The nurse was very unhelpful; I am not a very strong person; She is such an irresponsible person
+
+negative_judgment_implicit: IMPLICIT EXPRESSION OF NEGATIVE JUDGEMENT (others or self)
+Examples: The nurse didn't see me straight away; I didn't cope very well when my father died; I could have done better
+
+positive_self_judgment_explicit: EXPLICIT EXPRESSION OF POSITIVE SELF-JUDGEMENT
+Examples: I am a good father; I am an excellent runner
+
+positive_self_judgment_implicit: IMPLICIT EXPRESSION OF POSITIVE SELF-JUDGEMENT
+Examples: I am eating healthier than ever!; I don't smoke anymore
+
+negative_appreciation_explicit: EXPLICIT EXPRESSION OF NEGATIVE APPRECIATION (things, events, actions)
+Examples: The dinner was so boring; The mouthwash is not helping me/is disgusting
+
+negative_appreciation_implicit: IMPLICIT EXPRESSION OF NEGATIVE APPRECIATION (things, events, actions)
+Examples: I don't notice any difference after taking the tablets; I am not sure this is something for me
+
+general: All other types of utterances.

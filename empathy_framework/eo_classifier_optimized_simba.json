@@ -1,0 +1,53 @@
+{
+  "eo_class.predict": {
+    "traces": [],
+    "train": [],
+    "demos": [
+      {
+        "augmented": true,
+        "user_segment": "I have noticed this week",
+        "user_utterance": "I have noticed this week  (probably because of the heat)  that my fingers \/ hands & feet are quite swollen.   ",
+        "eo_descriptions": "negative_feelings_explicit: EXPLICIT EXPRESSIONS OF NEGATIVE FEELINGS, such as an emotive behaviour or a mental state\nExamples: I am sad; I cried\/shook\/shouted... (emotive behavior); I felt alone\/imagined the worst\/thought I would die\/remembered the pain\/hated the pills (mental state); I cried when I found out\n\nnegative_feelings_implicit: IMPLICIT EXPRESSION OF NEGATIVE FEELINGS through reference to a negative experience, such as fear, confusion, anxiety, or sadness\nExamples: I could not see any colours and everything was fuzzy (afraid\/confused); I still had not received the letter from the hospital (anxious); I'm in the process of retiring... I will be 66 in February (anxious\/sad); It's been 3 days and I haven't heard back from my GP\n\nnegative_judgment_explicit: EXPLICIT EXPRESSION OF NEGATIVE JUDGEMENT (others or self)\nExamples: The nurse was very unhelpful; I am not a very strong person; She is such an irresponsible person\n\nnegative_judgment_implicit: IMPLICIT EXPRESSION OF NEGATIVE JUDGEMENT (others or self)\nExamples: The nurse didn't see me straight away; I didn't cope very well when my father died; I could have done better\n\npositive_self_judgment_explicit: EXPLICIT EXPRESSION OF POSITIVE SELF-JUDGEMENT\nExamples: I am a good father; I am an excellent runner\n\npositive_self_judgment_implicit: IMPLICIT EXPRESSION OF POSITIVE SELF-JUDGEMENT\nExamples: I am eating healthier than ever!; I don't smoke anymore\n\nnegative_appreciation_explicit: EXPLICIT EXPRESSION OF NEGATIVE APPRECIATION (things, events, actions)\nExamples: The dinner was so boring; The mouthwash is not helping me\/is disgusting\n\nnegative_appreciation_implicit: IMPLICIT EXPRESSION OF NEGATIVE APPRECIATION (things, events, actions)\nExamples: I don't notice any difference after taking the tablets; I am not sure this is something for me\n\ngeneral: All other types of utterances.",
+        "reasoning": "The user mentions noticing swollen fingers, hands, and feet, which implies a physical discomfort or concern related to their health. This can be interpreted as an implicit expression of negative feelings, as the swelling could be causing anxiety or discomfort. The phrase \"probably because of the heat\" suggests a lack of control over the situation, which can also indicate a negative experience. Therefore, the top empathy opportunities identified are negative feelings implicit, as the user is not explicitly stating their feelings but is referencing a negative experience related to their health.",
+        "empathy_opportunity": [
+          "negative_feelings_implicit",
+          "general",
+          "negative_judgment_implicit"
+        ]
+      }
+    ],
+    "signature": {
+      "instructions": "Classify a segment of a longer user utterance into different Empathy Opportunities (EO) or as General. Use the definitions and examples for each EO provided to you to make your classifications. Return the top three EO classifications.",
+      "fields": [
+        {
+          "prefix": "User Segment:",
+          "description": "The segment of the user's utterance."
+        },
+        {
+          "prefix": "User Utterance:",
+          "description": "The full original user utterance."
+        },
+        {
+          "prefix": "Eo Descriptions:",
+          "description": "Definitions and examples for each Empathy Opportunity type."
+        },
+        {
+          "prefix": "Reasoning: Let's think step by step in order to",
+          "description": "${reasoning}"
+        },
+        {
+          "prefix": "Empathy Opportunity:",
+          "description": "The top three Empathy Opportunity prediction"
+        }
+      ]
+    },
+    "lm": null
+  },
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.10",
+      "dspy": "2.6.15",
+      "cloudpickle": "3.1"
+    }
+  }
+}

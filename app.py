@@ -10,12 +10,25 @@ from flask import Flask, jsonify, request
 import json
 import copy
 from scheduler import schedule_job, cancel_job
+from argparse import ArgumentParser
 
 app = Flask(__name__)
 
 
 # OpenAi API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
+from empathy_framework import EmpatheticResponder
+
+import dspy
+openai_lm = dspy.LM('openai/gpt-4o-mini', api_key=os.getenv("OPENAI_API_KEY"), max_tokens=4000)
+    
+dspy.configure(lm=openai_lm)
+
+empathy_responder = EmpatheticResponder()
+
+__p_location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 # Access token for your WhatsApp business account app
 whatsapp_token = os.environ.get("WHATSAPP_TOKEN")
@@ -141,7 +154,7 @@ def update_message_log(message, phone_number, role):
         }
     if phone_number not in user_job_dict:
         user_job_dict.update({
-            phone_number: -1
+            phone_number: (-1, -1)
         })
     message_log = {"role": role, "content": message}
     message_log_dict[phone_number]["current_session"].append(message_log)
@@ -165,6 +178,32 @@ def make_openai_request(message, from_number):
         )
         response_message = response.choices[0].message.content
         print(f"openai response: {response_message}")
+        update_message_log(response_message, from_number, "assistant")
+    except Exception as e:
+        print(f"openai error: {e}")
+        response_message = "Sorry, the OpenAI API is currently overloaded or offline. Please try again later."
+        remove_last_message_from_log(from_number)
+    return response_message
+
+def reformat_convo(message_log):
+    messages = ""
+    for l in message_log:
+        if l["role"] not in ["user", "assistant"]:
+            continue
+        if l["role"] == "user":
+            messages += "User: " + l["content"] + "\n"
+        else:
+            messages += "Assistant: " + l["content"] + "\n"
+    return messages
+
+def make_empathetic_response(message, from_number):
+    try:
+        message_log = update_message_log(message, from_number, "user")
+        convo_history = reformat_convo(message_log[-21:-1])
+        if not len(convo_history):
+            convo_history = None
+        response_message = empathy_responder(user_input=message, convo_history=convo_history).empathetic_response
+        print(f"empathetic response: {response_message}")
         update_message_log(response_message, from_number, "assistant")
     except Exception as e:
         print(f"openai error: {e}")
@@ -212,13 +251,26 @@ def handle_whatsapp_message(body):
     elif message["type"] == "audio":
         audio_id = message["audio"]["id"]
         message_body = handle_audio_message(audio_id)
-    response = make_openai_request(message_body, message["from"])
+    if "EMPATHY" in message_body:
+        message_body = message_body.replace("EMPATHY", "")
+        response = make_empathetic_response(message_body, message["from"])
+    else:
+        response = make_openai_request(message_body, message["from"])
     send_whatsapp_message(body, response)
-    if user_job_dict[message["from"]] == -1:
-        # Set up scheduling
-        new_job_num = schedule_job(f"python3 ~/Documents/sony_bot/whatsbot/notifier.py --ping --user_number={message["from"]}", "24 hours")
-        user_job_dict.update({message["from"]: new_job_num})
-        new_job_num = schedule_job(f"python3 ~/Documents/sony_bot/whatsbot/notifier.py --summarize --user_number={message["from"]}", "23 hours")
+    # Set up scheduling
+    notifier_script_path = os.path.join(__p_location__, "notifier.py")
+    if args.short:
+        if user_job_dict[message["from"]] != (-1, -1):
+            cancel_job(user_job_dict[message["from"]][0])
+            cancel_job(user_job_dict[message["from"]][1])
+        new_job_num_ping = schedule_job(f"python3 {notifier_script_path} --ping --user_number={message["from"]}", "15 minutes")
+        new_job_num_sum = schedule_job(f"python3 {notifier_script_path} --summarize --user_number={message["from"]}", "10 minutes")
+        user_job_dict.update({message["from"]: (new_job_num_ping, new_job_num_sum)})
+    else:
+        if user_job_dict[message["from"]] == (-1, -1):
+            new_job_num_ping = schedule_job(f"python3 {notifier_script_path} --ping --user_number={message["from"]}", "48 hours")
+            new_job_num_sum = schedule_job(f"python3 {notifier_script_path} --summarize --user_number={message["from"]}", "47 hours")
+            user_job_dict.update({message["from"]: (new_job_num_ping, new_job_num_sum)})
 
 
 
@@ -344,11 +396,14 @@ def summarize_session():
         message_log_dict[phone_number]["current_session"] = []
         json.dump(session_log_dict, open("session_logs.json", "w+"))
         json.dump(message_log_dict, open("message_logs.json", "w+"))
-    user_job_dict.update({phone_number: -1})
+    user_job_dict.update({phone_number: (-1, -1)})
     return f"Session summarized for {phone_number}!"
     
 
 
 if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("--short", action="store_true")
+    args = parser.parse_args()
     
     app.run(debug=True, use_reloader=True)
