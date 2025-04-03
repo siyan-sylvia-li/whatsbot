@@ -27,6 +27,8 @@ dspy.configure(lm=openai_lm)
 
 empathy_responder = EmpatheticResponder()
 
+client = openai.OpenAI()
+
 __p_location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
@@ -171,7 +173,7 @@ def remove_last_message_from_log(phone_number):
 def make_openai_request(message, from_number):
     try:
         message_log = update_message_log(message, from_number, "user")
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4o",
             messages=message_log,
             temperature=1.0,
@@ -185,21 +187,11 @@ def make_openai_request(message, from_number):
         remove_last_message_from_log(from_number)
     return response_message
 
-def reformat_convo(message_log):
-    messages = ""
-    for l in message_log:
-        if l["role"] not in ["user", "assistant"]:
-            continue
-        if l["role"] == "user":
-            messages += "User: " + l["content"] + "\n"
-        else:
-            messages += "Assistant: " + l["content"] + "\n"
-    return messages
 
 def make_empathetic_response(message, from_number):
     try:
         message_log = update_message_log(message, from_number, "user")
-        convo_history = reformat_convo(message_log[-21:-1])
+        convo_history = format_conversation(message_log[-21:-1])
         if not len(convo_history):
             convo_history = None
         response_message = empathy_responder(user_input=message, convo_history=convo_history).empathetic_response
@@ -220,7 +212,7 @@ def create_ping(from_number):
         ping_msg = ping_msg.replace("SESSION_SINGULAR_PLURAL", "session")
     ping_msg = ping_msg.replace("SESSION_SUMMARY", session_log_dict[from_number]["session_summaries"][-1])
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": ping_msg}],
             temperature=1.0,
@@ -251,7 +243,7 @@ def handle_whatsapp_message(body):
     elif message["type"] == "audio":
         audio_id = message["audio"]["id"]
         message_body = handle_audio_message(audio_id)
-    if "EMPATHY" in message_body:
+    if "EMPATHY" in message_body or args.empathy:
         message_body = message_body.replace("EMPATHY", "")
         response = make_empathetic_response(message_body, message["from"])
     else:
@@ -373,7 +365,7 @@ def summarize_session():
     print("Obtained phone number", phone_number)
     current_session_messages = []
     
-    if len(curr_msg = message_log_dict[phone_number]["current_session"]):
+    if len(message_log_dict[phone_number]["current_session"]):
         ind = len(message_log_dict[phone_number]["current_session"]) - 1
         curr_msg = message_log_dict[phone_number]["current_session"][ind]
         while curr_msg != "||" and ind >= 0:
@@ -405,6 +397,7 @@ def summarize_session():
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--short", action="store_true")
+    parser.add_argument("--empathy", action="store_true")
     args = parser.parse_args()
     
     app.run(debug=True, use_reloader=True)
