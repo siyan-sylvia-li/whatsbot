@@ -259,17 +259,18 @@ def handle_whatsapp_message(body):
     send_whatsapp_message(body, response)
     # Set up scheduling
     notifier_script_path = os.path.join(__p_location__, "notifier.py")
+    msg_from = message["from"]
     if args.short:
         if user_job_dict[message["from"]] != (-1, -1):
             cancel_job(user_job_dict[message["from"]][0])
             cancel_job(user_job_dict[message["from"]][1])
-        new_job_num_ping = schedule_job(f"python3 {notifier_script_path} --ping --user_number={message["from"]}", "15 minutes")
-        new_job_num_sum = schedule_job(f"python3 {notifier_script_path} --summarize --user_number={message["from"]}", "10 minutes")
+        new_job_num_ping = schedule_job(f"python3 {notifier_script_path} --ping --user_number={msg_from}", "15 minutes")
+        new_job_num_sum = schedule_job(f"python3 {notifier_script_path} --summarize --user_number={msg_from}", "10 minutes")
         user_job_dict.update({message["from"]: (new_job_num_ping, new_job_num_sum)})
     else:
         if user_job_dict[message["from"]] == (-1, -1):
-            new_job_num_ping = schedule_job(f"python3 {notifier_script_path} --ping --user_number={message["from"]}", "48 hours")
-            new_job_num_sum = schedule_job(f"python3 {notifier_script_path} --summarize --user_number={message["from"]}", "47 hours")
+            new_job_num_ping = schedule_job(f"python3 {notifier_script_path} --ping --user_number={msg_from}", "48 hours")
+            new_job_num_sum = schedule_job(f"python3 {notifier_script_path} --summarize --user_number={msg_from}", "47 hours")
             user_job_dict.update({message["from"]: (new_job_num_ping, new_job_num_sum)})
 
 
