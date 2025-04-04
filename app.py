@@ -11,12 +11,17 @@ import json
 import copy
 from scheduler import schedule_job, cancel_job
 from argparse import ArgumentParser
+import dotenv
+
+dotenv.load_dotenv(".env")
 
 app = Flask(__name__)
 
 
 # OpenAi API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# openai.api_key = os.getenv("OPENAI_API_KEY")
+# print(os.getenv("OPENAI_API_KEY"))
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 from empathy_framework import EmpatheticResponder
 
@@ -191,10 +196,11 @@ def make_openai_request(message, from_number):
 def make_empathetic_response(message, from_number):
     try:
         message_log = update_message_log(message, from_number, "user")
-        convo_history = format_conversation(message_log[-21:-1])
-        if not len(convo_history):
-            convo_history = None
-        response_message = empathy_responder(user_input=message, convo_history=convo_history).empathetic_response
+        if not len(message_log):
+            convo_history = []
+        else:
+            convo_history = [message_log[0]] + message_log[-21:-1]
+        response_message = empathy_responder.respond_empathetically(user_input=message, convo_history=convo_history).empathetic_response
         print(f"empathetic response: {response_message}")
         update_message_log(response_message, from_number, "assistant")
     except Exception as e:
