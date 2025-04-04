@@ -68,6 +68,7 @@ LANGUGAGE = "en-US"
 INITIAL_PROMPT = open("initial_prompt.txt").read()
 SUMMARY_PROMPT = open("summarization_prompt.txt").read()
 PING_PROMPT = open("ping_prompt.txt").read()
+MAINTENANCE_PROMPT = open("maintenance_prompt.txt").read()
 
 
 # get the media url from the media id
@@ -199,6 +200,7 @@ def make_empathetic_response(message, from_number):
         if not len(message_log):
             convo_history = []
         else:
+            # Get the last ten turns
             convo_history = [message_log[0]] + message_log[-21:-1]
         response_message = empathy_responder.respond_empathetically(user_input=message, convo_history=convo_history).empathetic_response
         print(f"empathetic response: {response_message}")
