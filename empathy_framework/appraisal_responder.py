@@ -43,6 +43,7 @@ class EmpatheticResponder:
     def __init__(self):
         self.eo_class = EOClassifierModule()
         self.eo_class.load(os.path.join(__location__, "eo_classifier_optimized_simba.json"))
+        self.eo_descriptions = open(os.path.join(__location__, "eo_descriptions.txt")).read()
         
     def respond_empathetically(self, user_input, convo_history: List[dict]):
         all_eos = []

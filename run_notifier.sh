@@ -1,0 +1,1 @@
+python3 notifier_cron.py

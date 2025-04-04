@@ -12,6 +12,7 @@ import copy
 from scheduler import schedule_job, cancel_job
 from argparse import ArgumentParser
 import dotenv
+import datetime
 
 dotenv.load_dotenv(".env")
 
@@ -162,8 +163,9 @@ def update_message_log(message, phone_number, role):
         }
     if phone_number not in user_job_dict:
         user_job_dict.update({
-            phone_number: (-1, -1)
+            phone_number: -1
         })
+        json.dump(user_job_dict, open("user_job_dict.json", "w+"))
     message_log = {"role": role, "content": message}
     message_log_dict[phone_number]["current_session"].append(message_log)
     json.dump(message_log_dict, open("message_logs.json", "w+"))
@@ -202,7 +204,7 @@ def make_empathetic_response(message, from_number):
         else:
             # Get the last ten turns
             convo_history = [message_log[0]] + message_log[-21:-1]
-        response_message = empathy_responder.respond_empathetically(user_input=message, convo_history=convo_history).empathetic_response
+        response_message = empathy_responder.respond_empathetically(user_input=message, convo_history=convo_history)[0]
         print(f"empathetic response: {response_message}")
         update_message_log(response_message, from_number, "assistant")
     except Exception as e:
@@ -258,20 +260,22 @@ def handle_whatsapp_message(body):
         response = make_openai_request(message_body, message["from"])
     send_whatsapp_message(body, response)
     # Set up scheduling
-    notifier_script_path = os.path.join(__p_location__, "notifier.py")
-    msg_from = message["from"]
+    # notifier_script_path = os.path.join(__p_location__, "notifier.py")
+    # msg_from = message["from"]
+    curr_time = datetime.datetime.now()
     if args.short:
-        if user_job_dict[message["from"]] != (-1, -1):
-            cancel_job(user_job_dict[message["from"]][0])
-            cancel_job(user_job_dict[message["from"]][1])
-        new_job_num_ping = schedule_job(f"python3 {notifier_script_path} --ping --user_number={msg_from}", "15 minutes")
-        new_job_num_sum = schedule_job(f"python3 {notifier_script_path} --summarize --user_number={msg_from}", "10 minutes")
-        user_job_dict.update({message["from"]: (new_job_num_ping, new_job_num_sum)})
+        # if user_job_dict[message["from"]] != (-1, -1):
+        #     cancel_job(user_job_dict[message["from"]][0])
+        #     cancel_job(user_job_dict[message["from"]][1])
+        # new_job_num_ping = schedule_job(f"python3 {notifier_script_path} --ping --user_number={msg_from}", "15 minutes")
+        # new_job_num_sum = schedule_job(f"python3 {notifier_script_path} --summarize --user_number={msg_from}", "10 minutes")
+        user_job_dict.update({message["from"]: (curr_time + datetime.timedelta(minutes=15)).timestamp()})
     else:
-        if user_job_dict[message["from"]] == (-1, -1):
-            new_job_num_ping = schedule_job(f"python3 {notifier_script_path} --ping --user_number={msg_from}", "48 hours")
-            new_job_num_sum = schedule_job(f"python3 {notifier_script_path} --summarize --user_number={msg_from}", "47 hours")
-            user_job_dict.update({message["from"]: (new_job_num_ping, new_job_num_sum)})
+        if user_job_dict[message["from"]] == -1:
+            # new_job_num_ping = schedule_job(f"python3 {notifier_script_path} --ping --user_number={msg_from}", "48 hours")
+            # new_job_num_sum = schedule_job(f"python3 {notifier_script_path} --summarize --user_number={msg_from}", "47 hours")
+            user_job_dict.update({message["from"]: (curr_time + datetime.timedelta(hours=48)).timestamp()})
+    json.dump(user_job_dict, open("user_job_dict.json", "w+"))
 
 
 
