@@ -169,6 +169,7 @@ def update_message_log(message, phone_number, role):
     message_log = {"role": role, "content": message}
     message_log_dict[phone_number]["current_session"].append(message_log)
     json.dump(message_log_dict, open("message_logs.json", "w+"))
+    json.dump(session_log_dict, open("session_logs.json", "w+"))
     return message_log_dict[phone_number]["current_session"]
 
 
@@ -215,7 +216,7 @@ def make_empathetic_response(message, from_number):
 
 # Handle the specific case of pinging user
 def create_ping(from_number):
-    ping_msg = PING_PROMPT.replace("NUM_SESSIONS", session_log_dict[from_number]["current_session"])
+    ping_msg = PING_PROMPT.replace("NUM_SESSIONS", str(session_log_dict[from_number]["current_session"]))
     if session_log_dict[from_number]["current_session"] > 1:
         ping_msg = ping_msg.replace("SESSION_SINGULAR_PLURAL", "sessions")
     else:
@@ -385,7 +386,7 @@ def summarize_session():
             curr_msg = message_log_dict[phone_number]["current_session"][ind]
             ind = ind - 1
         formatted_convo = format_conversation(current_session_messages)
-        response = openai.ChatCompletion.create(
+        response = openai.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": SUMMARY_PROMPT + "\n\n" + formatted_convo}],
                 temperature=1.0,

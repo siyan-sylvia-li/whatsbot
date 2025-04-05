@@ -54,7 +54,7 @@ class EmpatheticResponder:
         for a in all_appraisals:
             all_emp_techs = all_emp_techs + CLINICAL_EMPATHY_DESCRIPTIONS[a] + "\n\n"
         convo_history.append({"role": "user", "content": user_input})
-        convo_history.append({"role": "system", "content": "Respond to the user's message in an empathetic manner. Utilize the following empathetic response strategies when responding:\n\n" + all_emp_techs})
+        convo_history.append({"role": "system", "content": "Respond to the user's message in an empathetic manner. Utilize the following empathetic response strategies when responding:\n\n" + all_emp_techs + "\n\nBe succinct in your response. Make your response more similar to a text message."})
         response_text = empathy_lm(messages=convo_history)
         return response_text
         
