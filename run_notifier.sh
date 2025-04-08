@@ -1,1 +1,0 @@
-python3 notifier_cron.py > notifier_output.txt
