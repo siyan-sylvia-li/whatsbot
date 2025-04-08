@@ -49,10 +49,12 @@ class EmpatheticResponder:
         all_eos = []
         eos = self.eo_class(user_input=user_input, eo_descriptions=self.eo_descriptions).eo_classification
         all_eos.extend(eos)
+        print("All classified empathetic opportunities:", all_eos)
         all_appraisals = sample_appraisal(all_eos, sampling_num=3)
         all_emp_techs = ""
         for a in all_appraisals:
             all_emp_techs = all_emp_techs + CLINICAL_EMPATHY_DESCRIPTIONS[a] + "\n\n"
+        print("All empathetic strategies:", all_emp_techs)
         convo_history.append({"role": "user", "content": user_input})
         convo_history.append({"role": "system", "content": "Respond to the user's message in an empathetic manner. Utilize the following empathetic response strategies when responding:\n\n" + all_emp_techs + "\n\nBe succinct in your response. Make your response more similar to a text message."})
         response_text = empathy_lm(messages=convo_history)

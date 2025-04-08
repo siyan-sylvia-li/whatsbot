@@ -161,3 +161,4 @@ cython_debug/
 *logs.json
 *templates.json
 user_*.json
+*dict.json

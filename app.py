@@ -59,6 +59,11 @@ if not os.path.exists("user_templates.json"):
     json.dump({}, open("user_templates.json", "w+"))
 user_template_dict = json.load(open("user_templates.json"))
 
+# Stress relief dict
+if not os.path.exists("stress_relief_logs.json"):
+    json.dump({}, open("stress_relief_logs.json", "w+"))
+stress_relief_dict = json.load(open("stress_relief_logs.json"))
+
 user_job_dict = {}
 
 
@@ -150,17 +155,18 @@ def send_whatsapp_message(body, message):
 
 # create a message log for each phone number and return the current message log
 def update_message_log(message, phone_number, role):
-    initial_log = {
-        "role": "system",
-        "content": INITIAL_PROMPT,
-    }
     if phone_number not in message_log_dict:
+        initial_log = {
+            "role": "system",
+            "content": INITIAL_PROMPT,
+        }
         message_log_dict[phone_number] = {"current_session": [initial_log]}
     if phone_number not in session_log_dict:
         session_log_dict[phone_number] = {
             "current_session": 1,
             "session_summaries": []
         }
+        json.dump(session_log_dict, open("session_logs.json", "w+"))
     if phone_number not in user_job_dict:
         user_job_dict.update({
             phone_number: -1
@@ -169,7 +175,6 @@ def update_message_log(message, phone_number, role):
     message_log = {"role": role, "content": message}
     message_log_dict[phone_number]["current_session"].append(message_log)
     json.dump(message_log_dict, open("message_logs.json", "w+"))
-    json.dump(session_log_dict, open("session_logs.json", "w+"))
     return message_log_dict[phone_number]["current_session"]
 
 
@@ -200,13 +205,22 @@ def make_openai_request(message, from_number):
 def make_empathetic_response(message, from_number):
     try:
         message_log = update_message_log(message, from_number, "user")
-        if not len(message_log):
-            convo_history = []
-        else:
-            # Get the last ten turns
-            convo_history = [message_log[0]] + message_log[-21:-1]
+        convo_history = copy.copy(message_log)
         response_message = empathy_responder.respond_empathetically(user_input=message, convo_history=convo_history)[0]
         print(f"empathetic response: {response_message}")
+        update_message_log(response_message, from_number, "assistant")
+    except Exception as e:
+        print(f"openai error: {e}")
+        response_message = "Sorry, the OpenAI API is currently overloaded or offline. Please try again later."
+        remove_last_message_from_log(from_number)
+    return response_message
+
+def make_stress_relief_response(message, from_number):
+    try:
+        message_log = update_message_log(message, from_number, "user")
+        convo_history = copy.copy(message_log)
+        response_message = "STRESS_RELIEF_PLACEHOLDER"
+        print(f"stress relief response: {response_message}")
         update_message_log(response_message, from_number, "assistant")
     except Exception as e:
         print(f"openai error: {e}")
@@ -230,6 +244,7 @@ def create_ping(from_number):
         )
         response_message = response.choices[0].message.content
         print(f"openai response: {response_message}")
+        update_message_log(MAINTENANCE_PROMPT.replace("SESSION_SUMMARY", session_log_dict[from_number]["session_summaries"][-1]), from_number, "system")
         update_message_log(response_message, from_number, "assistant")
         session_log_dict[from_number]["current_session"] += 1
         json.dump(session_log_dict, open("session_logs.json", "w+"))
@@ -237,6 +252,18 @@ def create_ping(from_number):
         print(f"openai error: {e}")
         response_message = "Sorry, the OpenAI API is currently overloaded or offline. Please try again later."
         remove_last_message_from_log(from_number)
+    # Turn the stress relief state to false
+    if from_number in stress_relief_dict:
+        stress_relief_dict[from_number] = False
+        json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
+    # Create another ping in 15 minutes if the user has not responded
+    curr_time = datetime.datetime.now()
+    if args.short:
+        user_job_dict.update({from_number: (curr_time + datetime.timedelta(minutes=15)).timestamp()})
+    else:
+        if user_job_dict[from_number] == -1:
+            user_job_dict.update({from_number: (curr_time + datetime.timedelta(hours=48)).timestamp()})
+    json.dump(user_job_dict, open("user_job_dict.json", "w+"))
     return response_message
 
 
@@ -254,11 +281,18 @@ def handle_whatsapp_message(body):
     elif message["type"] == "audio":
         audio_id = message["audio"]["id"]
         message_body = handle_audio_message(audio_id)
-    if "EMPATHY" in message_body or args.empathy:
+    if stress_relief_dict.get(message["from"], False):
+        response = make_stress_relief_response(message_body, message["from"])
+    elif "EMPATHY" in message_body or args.empathy or session_log_dict[message["from"]]["current_session"] > 1:
         message_body = message_body.replace("EMPATHY", "")
         response = make_empathetic_response(message_body, message["from"])
     else:
         response = make_openai_request(message_body, message["from"])
+    if "FINISHED" in response and message["from"] in stress_relief_dict:
+        # Go into stress relief workflow
+        stress_relief_dict[message["from"]] = True
+        json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
+        
     send_whatsapp_message(body, response)
     # Set up scheduling
     # notifier_script_path = os.path.join(__p_location__, "notifier.py")
@@ -379,12 +413,7 @@ def summarize_session():
     current_session_messages = []
     
     if len(message_log_dict[phone_number]["current_session"]):
-        ind = len(message_log_dict[phone_number]["current_session"]) - 1
-        curr_msg = message_log_dict[phone_number]["current_session"][ind]
-        while curr_msg != "||" and ind >= 0:
-            current_session_messages.insert(0, curr_msg)
-            curr_msg = message_log_dict[phone_number]["current_session"][ind]
-            ind = ind - 1
+        current_session_messages = copy.copy(message_log_dict[phone_number]["current_session"])
         formatted_convo = format_conversation(current_session_messages)
         response = openai.chat.completions.create(
                 model="gpt-4o-mini",
@@ -393,11 +422,22 @@ def summarize_session():
             )
         response_message = response.choices[0].message.content
         print(response_message)
+        # Find whether stress is a signficant barrier
+        if session_log_dict[phone_number]["current_session"] == 1:
+            stress_judge = openai.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": "Does the user think stress is a significant barrier for them in terms of increasing physical activity? Answer with yes or no." + "\n\n" + formatted_convo}],
+                temperature=0,
+            )
+            if stress_judge.choices[0].message.content.lower().startswith("yes"):
+                stress_relief_dict.update({
+                    phone_number: False
+                })
         if phone_number in session_log_dict:
             session_log_dict[phone_number]["session_summaries"].append(response_message)
         session_num = f"session_" + str(session_log_dict[phone_number]["current_session"])
         message_log_dict[phone_number].update({
-            session_num: copy.copy(message_log_dict[phone_number]["current_session"])
+            session_num: current_session_messages
         })
         message_log_dict[phone_number]["current_session"] = []
         json.dump(session_log_dict, open("session_logs.json", "w+"))
