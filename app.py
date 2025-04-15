@@ -130,6 +130,36 @@ def handle_audio_message(audio_id):
     return message
 
 
+
+# send the response as a WhatsApp message back to the user
+def send_checkin_template(body):
+    value = body["entry"][0]["changes"][0]["value"]
+    phone_number_id = value["metadata"]["phone_number_id"]
+    from_number = value["messages"][0]["from"]
+    headers = {
+        "Authorization": f"Bearer {whatsapp_token}",
+        "Content-Type": "application/json",
+    }
+    url = "https://graph.facebook.com/v15.0/" + phone_number_id + "/messages"
+    data = {
+        "messaging_product": "whatsapp",
+        "to": from_number,
+        "type": "template",
+        "template": {
+            "name": "check_in_1",
+            "language": {
+                "code": "en"
+            },
+            "components": []
+        }
+    }
+    user_template_dict.update({from_number: body})
+    json.dump(user_template_dict, open("user_templates.json", "w+"))
+    response = requests.post(url, json=data, headers=headers)
+    print(f"whatsapp message response: {response.json()}")
+    response.raise_for_status()
+
+
 # send the response as a WhatsApp message back to the user
 def send_whatsapp_message(body, message):
     value = body["entry"][0]["changes"][0]["value"]
@@ -239,7 +269,7 @@ def create_ping(from_number):
     try:
         response = client.chat.completions.create(
             model="gpt-4o",
-            messages=[{"role": "user", "content": ping_msg}],
+            messages=[{"role": "system", "content": ping_msg}],
             temperature=1.0,
         )
         response_message = response.choices[0].message.content
@@ -274,20 +304,27 @@ def handle_whatsapp_message(body):
         # TODO: Have a specific case for CRON triggers
         message_body = message["text"]["body"]
         if message_body == "PING USER":
+            send_checkin_template(body)
             # When pinging, incorporate previous user session
-            response = create_ping(message["from"])
-            send_whatsapp_message(body, response)
+            # response = create_ping(message["from"])
+            # send_whatsapp_message(body, response)
             return
     elif message["type"] == "audio":
         audio_id = message["audio"]["id"]
         message_body = handle_audio_message(audio_id)
+    elif message["type"] == "button":
+        response = create_ping(message["from"])
+        send_whatsapp_message(body, response)
+        return
+    print("PASS 1")
     if stress_relief_dict.get(message["from"], False):
         response = make_stress_relief_response(message_body, message["from"])
-    elif "EMPATHY" in message_body or args.empathy or session_log_dict[message["from"]]["current_session"] > 1:
+    elif "EMPATHY" in message_body or args.empathy or (message["from"] in session_log_dict and session_log_dict[message["from"]]["current_session"] > 1):
         message_body = message_body.replace("EMPATHY", "")
         response = make_empathetic_response(message_body, message["from"])
     else:
         response = make_openai_request(message_body, message["from"])
+    print("PASS 2")
     if "FINISHED" in response and message["from"] in stress_relief_dict:
         # Go into stress relief workflow
         stress_relief_dict[message["from"]] = True
@@ -331,6 +368,9 @@ def handle_message(request):
                 and body["entry"][0]["changes"][0]["value"].get("messages")
                 and body["entry"][0]["changes"][0]["value"]["messages"][0]
             ):
+                if body["entry"][0]["changes"][0]["value"].get("statuses"):
+                    if int(body["entry"][0]["changes"][0]["value"]["statuses"][0]["timestamp"]) < int(datetime.now().timestamp()) - 10:
+                        return jsonify({"status": "ok"}), 200
                 handle_whatsapp_message(body)
             return jsonify({"status": "ok"}), 200
         else:

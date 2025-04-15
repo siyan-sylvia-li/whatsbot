@@ -12,11 +12,11 @@ __location__ = os.path.realpath(
 if __name__ == "__main__":
     while True:
         print("Current time", datetime.now().timestamp())
-        # if not os.path.exists(os.path.join(__location__, "user_job_dict.json")):
-        #     sys.exit(0)
+        if not os.path.exists(os.path.join(__location__, "user_job_dict.json")):
+            json.dump({}, open(os.path.join(__location__, "user_job_dict.json"), "w+"))
         user_job_dict = json.load(open(os.path.join(__location__, "user_job_dict.json")))
         if os.path.exists(os.path.join(__location__, "done_ping_dict.json")):
-            done_dict = json.load(open(os.path.join(__location__, "done_ping_dict.json"), "w+"))
+            done_dict = json.load(open(os.path.join(__location__, "done_ping_dict.json")))
         else:
             done_dict = {}
 
@@ -36,7 +36,7 @@ if __name__ == "__main__":
                 resp = requests.post(f"http://127.0.0.1:5000/webhook", json=template)
                 done_dict[u] = user_job_dict[u]
                 json.dump(done_dict, open(os.path.join(__location__, "done_ping_dict.json"), "w+"))
-        time.sleep(600)
+        time.sleep(300)
 
         # parser = ArgumentParser()
         # parser.add_argument("--summarize", action="store_true")

@@ -4,8 +4,10 @@ from .sampling_appraisal import sample_appraisal
 from .constants import CLINICAL_EMPATHY_DESCRIPTIONS, __location__
 import os
 from typing import List
+import copy
 
-empathy_lm = dspy.LM("openai/gpt-4o-mini", temperature=1.0)
+empathy_lm = dspy.LM("openai/gpt-4o")
+openai_4o_mini = dspy.LM("openai/gpt-4o-mini")
 
 class SentenceSegmenter(dspy.Signature):
     """
@@ -53,22 +55,25 @@ class EmpatheticResponder:
         self.eo_class.load(os.path.join(__location__, "eo_classifier_optimized_simba.json"))
         self.sentence_segmenter = dspy.Predict(SentenceSegmenter)
         self.eo_descriptions = open(os.path.join(__location__, "eo_descriptions.txt")).read()
+        self.empathy_prompt = open(os.path.join(__location__, "empathy_response_prompt.txt")).read()
         
     def respond_empathetically(self, user_input, convo_history: List[dict]):
         all_eos = []
-        segmentation = self.sentence_segmenter(input_paragraph=user_input).output
-        segmentation = segmentation.split("\n")
-        for s in segmentation:
-            eos = self.eo_class(user_input=user_input, eo_descriptions=self.eo_descriptions).eo_classification
-            all_eos.extend(eos)
+        with dspy.context(lm=openai_4o_mini):
+            segmentation = self.sentence_segmenter(input_paragraph=user_input).output
+            segmentation = segmentation.split("\n")
+            for s in segmentation:
+                eos = self.eo_class(user_input=s, user_utt=user_input, eo_descriptions=self.eo_descriptions).eo_classification
+                all_eos.extend(eos)
         print("All classified empathetic opportunities:", all_eos)
-        all_appraisals = sample_appraisal(all_eos, sampling_num=3)
+        all_appraisals = sample_appraisal(all_eos, sampling_num=2)
         all_emp_techs = ""
         for a in all_appraisals:
-            all_emp_techs = all_emp_techs + CLINICAL_EMPATHY_DESCRIPTIONS[a] + "\n\n"
+            all_emp_techs = all_emp_techs + "- " + CLINICAL_EMPATHY_DESCRIPTIONS[a] + "\n\n"
         print("All empathetic strategies:", all_emp_techs)
-        convo_history.append({"role": "system", "content": "Respond to the user's message in an empathetic manner. Utilize the following empathetic response strategies when responding:\n\n" + all_emp_techs + "\n\nBe succinct in your response. Make your response more similar to a text message."})
-        response_text = empathy_lm(messages=convo_history)
+        convo_copy = copy.copy(convo_history)
+        convo_copy.append({"role": "system", "content": self.empathy_prompt.replace("ALL_EMP", all_emp_techs)})
+        response_text = empathy_lm(messages=convo_copy)
         return response_text
         
 

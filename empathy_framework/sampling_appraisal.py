@@ -4,6 +4,7 @@ import random
 
 def sample_appraisal(eos: List[str], sampling_num=1):
     total_mapping = {}
+    eos = set(eos)
     for e in eos:
         eo_dict = EO_SAMPLING_MAP[e]
         for i in range(len(eo_dict["population"])):
