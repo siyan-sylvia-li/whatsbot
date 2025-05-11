@@ -354,7 +354,7 @@ def handle_whatsapp_message(body):
 # handle incoming webhook messages
 def handle_message(request):
     # Parse Request body in json format
-    body = request.get_json()
+    body = request.form.to_dict()
     print(f"request body: {body}")
 
     try:
