@@ -76,111 +76,32 @@ SUMMARY_PROMPT = open("summarization_prompt.txt").read()
 PING_PROMPT = open("ping_prompt.txt").read()
 MAINTENANCE_PROMPT = open("maintenance_prompt.txt").read()
 
+TWILIO_NUMBER = "whatsapp:+18774467072"
+TWILIO_SID = os.environ.get("TWILIO_ACCOUNT_SID")
+TWILIO_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
+TWILIO_MESSAGING_SERVICE_SID = "MGdadfd2c85ec7e22833d012852d8fa58a"
 
-# get the media url from the media id
-def get_media_url(media_id):
-    headers = {
-        "Authorization": f"Bearer {whatsapp_token}",
-    }
-    url = f"https://graph.facebook.com/v16.0/{media_id}/"
-    response = requests.get(url, headers=headers)
-    print(f"media id response: {response.json()}")
-    return response.json()["url"]
+from twilio.rest import Client
 
-
-# download the media file from the media url
-def download_media_file(media_url):
-    headers = {
-        "Authorization": f"Bearer {whatsapp_token}",
-    }
-    response = requests.get(media_url, headers=headers)
-    print(f"first 10 digits of the media file: {response.content[:10]}")
-    return response.content
-
-
-# convert ogg audio bytes to audio data which speechrecognition library can process
-def convert_audio_bytes(audio_bytes):
-    ogg_audio = pydub.AudioSegment.from_ogg(io.BytesIO(audio_bytes))
-    ogg_audio = ogg_audio.set_sample_width(4)
-    wav_bytes = ogg_audio.export(format="wav").read()
-    audio_data, sample_rate = sf.read(io.BytesIO(wav_bytes), dtype="int32")
-    sample_width = audio_data.dtype.itemsize
-    print(f"audio sample_rate:{sample_rate}, sample_width:{sample_width}")
-    audio = sr.AudioData(audio_data, sample_rate, sample_width)
-    return audio
-
-
-# run speech recognition on the audio data
-def recognize_audio(audio_bytes):
-    recognizer = sr.Recognizer()
-    audio_text = recognizer.recognize_google(audio_bytes, language=LANGUGAGE)
-    return audio_text
-
-
-# handle audio messages
-def handle_audio_message(audio_id):
-    audio_url = get_media_url(audio_id)
-    audio_bytes = download_media_file(audio_url)
-    audio_data = convert_audio_bytes(audio_bytes)
-    audio_text = recognize_audio(audio_data)
-    message = (
-        "Please summarize the following message in its original language "
-        f"as a list of bullet-points: {audio_text}"
-    )
-    return message
-
-
+twilio_client = Client(TWILIO_SID, TWILIO_TOKEN)
 
 # send the response as a WhatsApp message back to the user
 def send_checkin_template(body):
-    value = body["entry"][0]["changes"][0]["value"]
-    phone_number_id = value["metadata"]["phone_number_id"]
-    from_number = value["messages"][0]["from"]
-    headers = {
-        "Authorization": f"Bearer {whatsapp_token}",
-        "Content-Type": "application/json",
-    }
-    url = "https://graph.facebook.com/v15.0/" + phone_number_id + "/messages"
-    data = {
-        "messaging_product": "whatsapp",
-        "to": from_number,
-        "type": "template",
-        "template": {
-            "name": "check_in_1",
-            "language": {
-                "code": "en"
-            },
-            "components": []
-        }
-    }
-    user_template_dict.update({from_number: body})
-    json.dump(user_template_dict, open("user_templates.json", "w+"))
-    response = requests.post(url, json=data, headers=headers)
-    print(f"whatsapp message response: {response.json()}")
-    response.raise_for_status()
-
+    message = twilio_client.messages.create(
+        content_sid="HX19c29fcf2aa11e5a484bf0542a65a572",
+        to=body["From"],
+        from_=TWILIO_NUMBER,
+        messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID
+    )
+    print(f"whatsapp message response: {message}")
 
 # send the response as a WhatsApp message back to the user
 def send_whatsapp_message(body, message):
-    value = body["entry"][0]["changes"][0]["value"]
-    phone_number_id = value["metadata"]["phone_number_id"]
-    from_number = value["messages"][0]["from"]
-    headers = {
-        "Authorization": f"Bearer {whatsapp_token}",
-        "Content-Type": "application/json",
-    }
-    url = "https://graph.facebook.com/v15.0/" + phone_number_id + "/messages"
-    data = {
-        "messaging_product": "whatsapp",
-        "to": from_number,
-        "type": "text",
-        "text": {"body": message},
-    }
-    user_template_dict.update({from_number: body})
-    json.dump(user_template_dict, open("user_templates.json", "w+"))
-    response = requests.post(url, json=data, headers=headers)
-    print(f"whatsapp message response: {response.json()}")
-    response.raise_for_status()
+    message = twilio_client.messages.create(
+        to=body["From"],
+        from_=TWILIO_NUMBER,
+        body=message)
+    print(f"whatsapp message response: {message}")
 
 
 # create a message log for each phone number and return the current message log
@@ -299,54 +220,50 @@ def create_ping(from_number):
 
 # handle WhatsApp messages of different type
 def handle_whatsapp_message(body):
-    message = body["entry"][0]["changes"][0]["value"]["messages"][0]
-    if message["type"] == "text":
+    if body["MessageType"] == "text":
         # TODO: Have a specific case for CRON triggers
-        message_body = message["text"]["body"]
+        message_body = body["Body"]
         if message_body == "PING USER":
             send_checkin_template(body)
-            # When pinging, incorporate previous user session
-            # response = create_ping(message["from"])
-            # send_whatsapp_message(body, response)
+            # When pinging, incorporate previous user session=
             return
-    elif message["type"] == "audio":
-        audio_id = message["audio"]["id"]
-        message_body = handle_audio_message(audio_id)
-    elif message["type"] == "button":
-        response = create_ping(message["from"])
+    elif body["MessageType"] == "button":
+        response = create_ping(body["From"])
         send_whatsapp_message(body, response)
         return
     print("PASS 1")
-    if stress_relief_dict.get(message["from"], False):
-        response = make_stress_relief_response(message_body, message["from"])
-    elif "EMPATHY" in message_body or args.empathy or (message["from"] in session_log_dict and session_log_dict[message["from"]]["current_session"] > 1):
+    if stress_relief_dict.get(body["From"], False):
+        response = make_stress_relief_response(message_body, body["From"])
+    elif "EMPATHY" in message_body or args.empathy or (body["From"] in session_log_dict and session_log_dict[body["From"]]["current_session"] > 1):
         message_body = message_body.replace("EMPATHY", "")
-        response = make_empathetic_response(message_body, message["from"])
+        response = make_empathetic_response(message_body, body["From"])
     else:
-        response = make_openai_request(message_body, message["from"])
+        response = make_openai_request(message_body, body["From"])
     print("PASS 2")
-    if "FINISHED" in response and message["from"] in stress_relief_dict:
-        # Go into stress relief workflow
-        stress_relief_dict[message["from"]] = True
+    if "FINISHED" in response and body["From"] in stress_relief_dict:
+        # Go into stress relief workflow2
+        stress_relief_dict[body["From"]] = True
         json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
         
     send_whatsapp_message(body, response)
     # Set up scheduling
-    # notifier_script_path = os.path.join(__p_location__, "notifier.py")
-    # msg_from = message["from"]
-    curr_time = datetime.datetime.now()
-    if args.short:
-        # if user_job_dict[message["from"]] != (-1, -1):
-        #     cancel_job(user_job_dict[message["from"]][0])
-        #     cancel_job(user_job_dict[message["from"]][1])
-        # new_job_num_ping = schedule_job(f"python3 {notifier_script_path} --ping --user_number={msg_from}", "15 minutes")
-        # new_job_num_sum = schedule_job(f"python3 {notifier_script_path} --summarize --user_number={msg_from}", "10 minutes")
-        user_job_dict.update({message["from"]: (curr_time + datetime.timedelta(minutes=15)).timestamp()})
-    else:
-        if user_job_dict[message["from"]] == -1:
-            # new_job_num_ping = schedule_job(f"python3 {notifier_script_path} --ping --user_number={msg_from}", "48 hours")
-            # new_job_num_sum = schedule_job(f"python3 {notifier_script_path} --summarize --user_number={msg_from}", "47 hours")
-            user_job_dict.update({message["from"]: (curr_time + datetime.timedelta(hours=48)).timestamp()})
+    curr_time = datetime.datetime.now(datetime.timezone.utc)
+    # datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    if user_job_dict[body["From"]] == -1:
+        if args.short:
+            schedule_time = curr_time + datetime.timedelta(minutes=15)
+        else:
+            schedule_time = curr_time + datetime.timedelta(hours=48)
+        print(type(schedule_time), schedule_time.isoformat())
+        message = twilio_client.messages.create(
+            content_sid="HX19c29fcf2aa11e5a484bf0542a65a572",
+            to=body["From"],
+            from_=TWILIO_NUMBER,
+            messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
+            send_at=schedule_time,
+            schedule_type="fixed",
+        )
+        user_job_dict.update({body["From"]: schedule_time.timestamp()})
     json.dump(user_job_dict, open("user_job_dict.json", "w+"))
 
 
@@ -360,18 +277,8 @@ def handle_message(request):
     try:
         # info on WhatsApp text message payload:
         # https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/payload-examples#text-messages
-        if body.get("object"):
-            if (
-                body.get("entry")
-                and body["entry"][0].get("changes")
-                and body["entry"][0]["changes"][0].get("value")
-                and body["entry"][0]["changes"][0]["value"].get("messages")
-                and body["entry"][0]["changes"][0]["value"]["messages"][0]
-            ):
-                if body["entry"][0]["changes"][0]["value"].get("statuses"):
-                    if int(body["entry"][0]["changes"][0]["value"]["statuses"][0]["timestamp"]) < int(datetime.now().timestamp()) - 10:
-                        return jsonify({"status": "ok"}), 200
-                handle_whatsapp_message(body)
+        if body.get("SmsStatus") == "received":
+            handle_whatsapp_message(body)
             return jsonify({"status": "ok"}), 200
         else:
             # if the request is not a WhatsApp API event, return an error
