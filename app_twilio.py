@@ -86,16 +86,6 @@ from twilio.rest import Client
 twilio_client = Client(TWILIO_SID, TWILIO_TOKEN)
 
 # send the response as a WhatsApp message back to the user
-def send_checkin_template(body):
-    message = twilio_client.messages.create(
-        content_sid="HX19c29fcf2aa11e5a484bf0542a65a572",
-        to=body["From"],
-        from_=TWILIO_NUMBER,
-        messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID
-    )
-    print(f"whatsapp message response: {message}")
-
-# send the response as a WhatsApp message back to the user
 def send_whatsapp_message(body, message):
     message = twilio_client.messages.create(
         to=body["From"],
@@ -223,10 +213,6 @@ def handle_whatsapp_message(body):
     if body["MessageType"] == "text":
         # TODO: Have a specific case for CRON triggers
         message_body = body["Body"]
-        if message_body == "PING USER":
-            send_checkin_template(body)
-            # When pinging, incorporate previous user session=
-            return
     elif body["MessageType"] == "button":
         response = create_ping(body["From"])
         send_whatsapp_message(body, response)
