@@ -9,7 +9,6 @@ import speech_recognition as sr
 from flask import Flask, jsonify, request
 import json
 import copy
-from scheduler import schedule_job, cancel_job
 from argparse import ArgumentParser
 import dotenv
 import datetime
@@ -43,6 +42,14 @@ whatsapp_token = os.environ.get("WHATSAPP_TOKEN")
 
 # Verify Token defined when configuring the webhook
 verify_token = os.environ.get("VERIFY_TOKEN")
+
+from stress_relief import StressReliefModule
+
+bot = StressReliefModule(
+        profile_path="user_profiles.json",
+        openai_api_key=os.environ["OPENAI_API_KEY"],  # Pass the API key directly
+        favorite_threshold=7.0  # Use a custom threshold
+    )
 
 # Message log dictionary to enable conversation over multiple messages
 if not os.path.exists("message_logs.json"):
@@ -159,8 +166,18 @@ def make_empathetic_response(message, from_number):
 def make_stress_relief_response(message, from_number):
     try:
         message_log = update_message_log(message, from_number, "user")
-        convo_history = copy.copy(message_log)
-        response_message = "STRESS_RELIEF_PLACEHOLDER"
+        if stress_relief_dict[from_number] == False:
+            convo_history = copy.copy(message_log)
+            convo_history.pop(0)
+            convo_history.append({"role": "system", "content": "Check with the user to determine whether they are stressed."})
+            response_message = openai_lm(messages=convo_history)[0]
+            stress_relief_dict[from_number] = 1
+        elif stress_relief_dict[from_number] == 1:
+            response_message = bot.process_message(message, from_number)
+            stress_relief_dict[from_number] = 2
+        elif stress_relief_dict[from_number] == 2:
+            response_message = bot.handle_feedback(message, from_number)
+            stress_relief_dict[from_number] = True
         print(f"stress relief response: {response_message}")
         update_message_log(response_message, from_number, "assistant")
     except Exception as e:
@@ -211,8 +228,9 @@ def create_ping(from_number):
 # handle WhatsApp messages of different type
 def handle_whatsapp_message(body):
     if body["MessageType"] == "text":
-        # TODO: Have a specific case for CRON triggers
         message_body = body["Body"]
+        if message_body == "SUMMARY":
+            summarize_session(body["From"])
     elif body["MessageType"] == "button":
         response = create_ping(body["From"])
         send_whatsapp_message(body, response)
@@ -230,6 +248,8 @@ def handle_whatsapp_message(body):
         # Go into stress relief workflow2
         stress_relief_dict[body["From"]] = True
         json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
+    if "FINISHED" in response:
+        response = response.replace("FINISHED", "")
         
     send_whatsapp_message(body, response)
     # Set up scheduling
@@ -237,16 +257,26 @@ def handle_whatsapp_message(body):
     # datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     if user_job_dict[body["From"]] == -1:
         if args.short:
-            schedule_time = curr_time + datetime.timedelta(minutes=15)
+            schedule_time = curr_time + datetime.timedelta(minutes=30)
+            schedule_summary_time = curr_time + datetime.timedelta(minutes=25)
         else:
             schedule_time = curr_time + datetime.timedelta(hours=48)
-        print(type(schedule_time), schedule_time.isoformat())
+            schedule_summary_time = curr_time + datetime.timedelta(minutes=30)
         message = twilio_client.messages.create(
             content_sid="HX19c29fcf2aa11e5a484bf0542a65a572",
             to=body["From"],
             from_=TWILIO_NUMBER,
             messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
             send_at=schedule_time,
+            schedule_type="fixed",
+        )
+
+        message = twilio_client.messages.create(
+            body="SUMMARY",
+            to=TWILIO_NUMBER,
+            from_=body["From"],
+            messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
+            send_at=schedule_summary_time,
             schedule_type="fixed",
         )
         user_job_dict.update({body["From"]: schedule_time.timestamp()})
@@ -343,10 +373,7 @@ def reset():
     json.dump({}, open("message_logs.json", "w+"))
     return "Message log resetted!"
 
-
-@app.route("/summarize", methods=["GET"])
-def summarize_session():
-    phone_number = request.args.get("phone_number")
+def summarize_session(phone_number):
     print("Obtained phone number", phone_number)
     current_session_messages = []
     
