@@ -65,7 +65,7 @@ class EmpatheticResponder:
             for s in segmentation:
                 eos = self.eo_class(user_input=s, user_utt=user_input, eo_descriptions=self.eo_descriptions).eo_classification
                 all_eos.extend(eos)
-        print("All classified empathetic opportunities:", all_eos)
+        # print("All classified empathetic opportunities:", all_eos)
         if len(segmentation) == 1:
             all_appraisals = sample_appraisal(all_eos, sampling_num=1)
         else:
@@ -73,13 +73,13 @@ class EmpatheticResponder:
         all_emp_techs = ""
         for a in all_appraisals:
             all_emp_techs = all_emp_techs + "- " + CLINICAL_EMPATHY_DESCRIPTIONS[a] + "\n\n"
-        print("All empathetic strategies:", all_emp_techs)
+        # print("All empathetic strategies:", all_emp_techs)
         convo_copy = copy.copy(convo_history)
         convo_copy.append({"role": "system", "content": self.empathy_prompt.replace("ALL_EMP", all_emp_techs)})
         response_text = empathy_lm(messages=convo_copy)
         convo_copy.pop(-1)
         convo_copy.append({"role": "assistant", "content": response_text[0]})
-        convo_copy.append({"role": "system", "content": "Rewrite your previous utterance to be more natural and less repetitive."})
+        convo_copy.append({"role": "system", "content": "Rewrite your previous utterance to be more natural and less repetitive, while retaining empathy."})
         response_text = empathy_lm(messages=convo_copy)
         if return_dict:
             return response_text, {
