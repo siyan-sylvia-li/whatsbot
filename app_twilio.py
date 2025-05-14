@@ -164,21 +164,30 @@ def make_empathetic_response(message, from_number):
     return response_message
 
 def make_stress_relief_response(message, from_number):
+    global stress_relief_dict
+    stress_relief_dict = json.load(open("stress_relief_logs.json"))
     try:
         message_log = update_message_log(message, from_number, "user")
-        if stress_relief_dict[from_number] == False:
+        if stress_relief_dict[from_number] == 1:
+            print("ROUND 2 STRESS RELIEF CONVERSATION")
+            response_message = bot.process_message(message, from_number)["text"]
+            stress_relief_dict.update({from_number: 2})
+            json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
+        elif stress_relief_dict[from_number] == 2:
+            print("ROUND 3 STRESS RELIEF CONVERSATION")
+            response_message = bot.handle_feedback(message, from_number)["text"]
+            stress_relief_dict.update({from_number: False})
+            json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
+        elif stress_relief_dict[from_number] is True:
+            print("INITIAL STRESS RELIEF CONVERSATION")
             convo_history = copy.copy(message_log)
             convo_history.pop(0)
             convo_history.append({"role": "system", "content": "Check with the user to determine whether they are stressed."})
             response_message = openai_lm(messages=convo_history)[0]
-            stress_relief_dict[from_number] = 1
-        elif stress_relief_dict[from_number] == 1:
-            response_message = bot.process_message(message, from_number)
-            stress_relief_dict[from_number] = 2
-        elif stress_relief_dict[from_number] == 2:
-            response_message = bot.handle_feedback(message, from_number)
-            stress_relief_dict[from_number] = True
+            stress_relief_dict.update({from_number: 1})
+            json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
         print(f"stress relief response: {response_message}")
+        print(stress_relief_dict[from_number])
         update_message_log(response_message, from_number, "assistant")
     except Exception as e:
         print(f"openai error: {e}")
@@ -188,6 +197,7 @@ def make_stress_relief_response(message, from_number):
 
 # Handle the specific case of pinging user
 def create_ping(from_number):
+    summarize_session(from_number)
     ping_msg = PING_PROMPT.replace("NUM_SESSIONS", str(session_log_dict[from_number]["current_session"]))
     if session_log_dict[from_number]["current_session"] > 1:
         ping_msg = ping_msg.replace("SESSION_SINGULAR_PLURAL", "sessions")
@@ -215,12 +225,7 @@ def create_ping(from_number):
         stress_relief_dict[from_number] = False
         json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
     # Create another ping in 15 minutes if the user has not responded
-    curr_time = datetime.datetime.now()
-    if args.short:
-        user_job_dict.update({from_number: (curr_time + datetime.timedelta(minutes=15)).timestamp()})
-    else:
-        if user_job_dict[from_number] == -1:
-            user_job_dict.update({from_number: (curr_time + datetime.timedelta(hours=48)).timestamp()})
+    user_job_dict.update({from_number: -1})
     json.dump(user_job_dict, open("user_job_dict.json", "w+"))
     return response_message
 
@@ -229,8 +234,6 @@ def create_ping(from_number):
 def handle_whatsapp_message(body):
     if body["MessageType"] == "text":
         message_body = body["Body"]
-        if message_body == "SUMMARY":
-            summarize_session(body["From"])
     elif body["MessageType"] == "button":
         response = create_ping(body["From"])
         send_whatsapp_message(body, response)
@@ -241,15 +244,20 @@ def handle_whatsapp_message(body):
     elif "EMPATHY" in message_body or args.empathy or (body["From"] in session_log_dict and session_log_dict[body["From"]]["current_session"] > 1):
         message_body = message_body.replace("EMPATHY", "")
         response = make_empathetic_response(message_body, body["From"])
+        if "FINISHED" in response and body["From"] in stress_relief_dict:
+            # Go into stress relief workflow2
+            stress_relief_dict[body["From"]] = True
+            json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
     else:
         response = make_openai_request(message_body, body["From"])
+        if "FINISHED" in response and body["From"] in stress_relief_dict:
+            # Go into stress relief workflow2
+            stress_relief_dict[body["From"]] = True
+            json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
     print("PASS 2")
-    if "FINISHED" in response and body["From"] in stress_relief_dict:
-        # Go into stress relief workflow2
-        stress_relief_dict[body["From"]] = True
-        json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
+    
     if "FINISHED" in response:
-        response = response.replace("FINISHED", "")
+        response = response.replace("FINISHED.", "").replace("FINISHED", "")
         
     send_whatsapp_message(body, response)
     # Set up scheduling
@@ -257,26 +265,15 @@ def handle_whatsapp_message(body):
     # datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     if user_job_dict[body["From"]] == -1:
         if args.short:
-            schedule_time = curr_time + datetime.timedelta(minutes=30)
-            schedule_summary_time = curr_time + datetime.timedelta(minutes=25)
+            schedule_time = curr_time + datetime.timedelta(minutes=10)
         else:
             schedule_time = curr_time + datetime.timedelta(hours=48)
-            schedule_summary_time = curr_time + datetime.timedelta(minutes=30)
         message = twilio_client.messages.create(
             content_sid="HX19c29fcf2aa11e5a484bf0542a65a572",
             to=body["From"],
             from_=TWILIO_NUMBER,
             messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
             send_at=schedule_time,
-            schedule_type="fixed",
-        )
-
-        message = twilio_client.messages.create(
-            body="SUMMARY",
-            to=TWILIO_NUMBER,
-            from_=body["From"],
-            messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
-            send_at=schedule_summary_time,
             schedule_type="fixed",
         )
         user_job_dict.update({body["From"]: schedule_time.timestamp()})
