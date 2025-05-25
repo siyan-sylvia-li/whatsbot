@@ -13,6 +13,9 @@ from argparse import ArgumentParser
 import dotenv
 import datetime
 
+import random
+random.seed(42)
+
 dotenv.load_dotenv(".env")
 
 app = Flask(__name__)
@@ -73,6 +76,13 @@ stress_relief_dict = json.load(open("stress_relief_logs.json"))
 
 user_job_dict = {}
 
+all_scheduled_messages = []
+
+
+# EXP ID dict
+if not os.path.exists("exp_id_map.json"):
+    json.dump({}, open("exp_id_map.json", "w+"))
+exp_id_map = json.load(open("exp_id_map.json"))
 
 # language for speech to text recoginition
 # TODO: detect this automatically based on the user's language
@@ -234,6 +244,14 @@ def create_ping(from_number):
 def handle_whatsapp_message(body):
     if body["MessageType"] == "text":
         message_body = body["Body"]
+        if message_body.startswith("EXP_ID"):
+            exp_id = message_body.replace("EXP_ID: ", "").strip()
+            exp_condition = random.choice([0, 1])
+            exp_id_map.update({
+                body["From"]: (exp_id, exp_condition)
+            })
+            json.dump(exp_id_map, open("exp_id_map.json", "w+"))
+            message_body = "Hi"
     elif body["MessageType"] == "button":
         response = create_ping(body["From"])
         send_whatsapp_message(body, response)
@@ -245,13 +263,14 @@ def handle_whatsapp_message(body):
         message_body = message_body.replace("EMPATHY", "")
         response = make_empathetic_response(message_body, body["From"])
         if "FINISHED" in response and body["From"] in stress_relief_dict:
-            # Go into stress relief workflow2
+            # Go into stress relief workflow
             stress_relief_dict[body["From"]] = True
             json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
+            # TODO: Directly ask here if the user is stressed
     else:
         response = make_openai_request(message_body, body["From"])
         if "FINISHED" in response and body["From"] in stress_relief_dict:
-            # Go into stress relief workflow2
+            # Go into stress relief workflow
             stress_relief_dict[body["From"]] = True
             json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
     print("PASS 2")
@@ -265,7 +284,7 @@ def handle_whatsapp_message(body):
     # datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     if user_job_dict[body["From"]] == -1:
         if args.short:
-            schedule_time = curr_time + datetime.timedelta(minutes=10)
+            schedule_time = curr_time + datetime.timedelta(minutes=12)
         else:
             schedule_time = curr_time + datetime.timedelta(hours=48)
         message = twilio_client.messages.create(
@@ -276,8 +295,20 @@ def handle_whatsapp_message(body):
             send_at=schedule_time,
             schedule_type="fixed",
         )
+        all_scheduled_messages.append(message)
+        print("SCHEDULED MESSAGE:", message)
         user_job_dict.update({body["From"]: schedule_time.timestamp()})
     json.dump(user_job_dict, open("user_job_dict.json", "w+"))
+
+
+def cancel_all_scheduled_messages():
+    if len(all_scheduled_messages) == 0:
+        print("No messages to cancel")
+    for m in all_scheduled_messages:
+        message = twilio_client.messages(m.sid).update(
+            status="canceled"
+        )
+        print("CANCELLED:", message)
 
 
 
@@ -410,6 +441,10 @@ def summarize_session(phone_number):
 
 
 if __name__ == "__main__":
+    import atexit
+
+    atexit.register(cancel_all_scheduled_messages)
+
     parser = ArgumentParser()
     parser.add_argument("--short", action="store_true")
     parser.add_argument("--empathy", action="store_true")
