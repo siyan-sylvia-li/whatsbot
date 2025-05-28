@@ -189,7 +189,7 @@ def make_stress_relief_response(message, from_number):
             convo_history = copy.copy(message_log)
             convo_history.append({"role": "assistant", "content": response_message})
             convo_history.append({"role": "system", "content": "Rewrite your last message to incorporate content earlier in the conversation and to say goodbye to the user."})
-            response_message = openai_lm(convo_history)[0]
+            response_message = openai_lm(messages=convo_history)[0]
             stress_relief_dict.update({from_number: False})
             json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
         print(f"stress relief response: {response_message}")
@@ -267,8 +267,8 @@ def handle_whatsapp_message(body):
             convo_history = copy.copy(msg_logs)
             convo_history.pop(0)
             convo_history.append({"role": "system", "content": "Rewrite your last message so that you check with the user to determine whether they are stressed."})
-            response_message = openai_lm(messages=convo_history)[0]
-            message_log_dict[body["From"]]["current_session"][-1]["content"] = response_message
+            response = openai_lm(messages=convo_history)[0]
+            message_log_dict[body["From"]]["current_session"][-1]["content"] = response
             stress_relief_dict.update({body["From"]: 1})
             json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
     else:
@@ -276,6 +276,15 @@ def handle_whatsapp_message(body):
         if "FINISHED" in response and body["From"] in stress_relief_dict:
             # Go into stress relief workflow
             stress_relief_dict[body["From"]] = True
+            json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
+            # TODO: Directly ask here if the user is stressed
+            msg_logs = message_log_dict[body["From"]]["current_session"]
+            convo_history = copy.copy(msg_logs)
+            convo_history.pop(0)
+            convo_history.append({"role": "system", "content": "Rewrite your last message so that you check with the user to determine whether they are stressed."})
+            response = openai_lm(messages=convo_history)[0]
+            message_log_dict[body["From"]]["current_session"][-1]["content"] = response
+            stress_relief_dict.update({body["From"]: 1})
             json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
     print("PASS 2")
     
