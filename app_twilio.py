@@ -240,8 +240,8 @@ def create_ping(from_number):
 def handle_whatsapp_message(body):
     if body["MessageType"] == "text":
         message_body = body["Body"]
-        if message_body.startswith("EXP_ID"):
-            exp_id = message_body.replace("EXP_ID: ", "").strip()
+        if "EXP_ID" in message_body:
+            exp_id = message_body.replace("EXP_ID", "").strip()
             exp_condition = random.choice([0, 1])
             exp_id_map.update({
                 body["From"]: (exp_id, exp_condition)
@@ -255,7 +255,7 @@ def handle_whatsapp_message(body):
     print("PASS 1")
     if stress_relief_dict.get(body["From"], False):
         response = make_stress_relief_response(message_body, body["From"])
-    elif "EMPATHY" in message_body or args.empathy or (body["From"] in session_log_dict and session_log_dict[body["From"]]["current_session"] > 1):
+    elif body["From"] in session_log_dict and session_log_dict[body["From"]]["current_session"] > 1:
         message_body = message_body.replace("EMPATHY", "")
         response = make_empathetic_response(message_body, body["From"])
         if "FINISHED" in response and body["From"] in stress_relief_dict:

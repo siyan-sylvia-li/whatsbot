@@ -6,5 +6,6 @@ json.dump({}, open("user_job_dict.json", "w+"))
 json.dump({}, open("user_profiles.json", "w+"))
 json.dump({}, open("message_logs.json", "w+"))
 json.dump({}, open("done_ping_dict.json", "w+"))
+json.dump({}, open("exp_id_map.json", "w+"))
 
 

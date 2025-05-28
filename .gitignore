@@ -162,3 +162,4 @@ cython_debug/
 *templates.json
 user_*.json
 *dict.json
+exp_id_map.json
