@@ -142,14 +142,21 @@ def remove_last_message_from_log(phone_number):
 
 
 # make request to OpenAI
-def make_openai_request(message, from_number):
+def make_openai_request(message, from_number, non_empathetic=False):
     try:
         message_log = update_message_log(message, from_number, "user")
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=message_log,
-            temperature=1.0,
-        )
+        if non_empathetic:
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=message_log + [{"role": "system", "content": "Be professional and succinct. Do not be empathetic."}],
+                temperature=1.0,
+            )
+        else:
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=message_log,
+                temperature=1.0,
+            )
         response_message = response.choices[0].message.content
         print(f"openai response: {response_message}")
         update_message_log(response_message, from_number, "assistant")
@@ -248,6 +255,8 @@ def handle_whatsapp_message(body):
             })
             json.dump(exp_id_map, open("exp_id_map.json", "w+"))
             message_body = "Hi"
+        else:
+            _, exp_condition = exp_id_map[body["From"]]
     elif body["MessageType"] == "button":
         response = create_ping(body["From"])
         send_whatsapp_message(body, response)
@@ -256,8 +265,12 @@ def handle_whatsapp_message(body):
     if stress_relief_dict.get(body["From"], False):
         response = make_stress_relief_response(message_body, body["From"])
     elif body["From"] in session_log_dict and session_log_dict[body["From"]]["current_session"] > 1:
-        message_body = message_body.replace("EMPATHY", "")
-        response = make_empathetic_response(message_body, body["From"])
+        if exp_condition == 0:
+            response = make_openai_request(message_body, body["From"], non_empathetic=True)
+        elif exp_condition == 1:
+            response = make_openai_request(message_body, body["From"])
+        elif exp_condition == 2:
+            response = make_empathetic_response(message_body, body["From"])
         if "FINISHED" in response and body["From"] in stress_relief_dict:
             # Go into stress relief workflow
             stress_relief_dict[body["From"]] = True
