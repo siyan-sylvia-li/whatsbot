@@ -148,8 +148,8 @@ def make_openai_request(message, from_number, non_empathetic=False):
         if non_empathetic:
             response = client.chat.completions.create(
                 model="gpt-4o",
-                messages=message_log + [{"role": "system", "content": "Be professional and succinct. Do not be empathetic."}],
-                temperature=1.0,
+                messages=message_log + [{"role": "system", "content": "Be professional, cold, and succinct. Do not be empathetic."}],
+                temperature=0.2,
             )
         else:
             response = client.chat.completions.create(
@@ -249,7 +249,8 @@ def handle_whatsapp_message(body):
         message_body = body["Body"]
         if "EXP_ID" in message_body:
             exp_id = message_body.replace("EXP_ID", "").strip()
-            exp_condition = random.choice([0, 1])
+            # exp_condition = random.choice([0, 1, 2])
+            exp_condition = 0
             exp_id_map.update({
                 body["From"]: (exp_id, exp_condition)
             })
@@ -285,7 +286,11 @@ def handle_whatsapp_message(body):
             stress_relief_dict.update({body["From"]: 1})
             json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
     else:
-        response = make_openai_request(message_body, body["From"])
+        if exp_condition == 0:
+            response = make_openai_request(message_body, body["From"], non_empathetic=True)
+        else:
+            response = make_openai_request(message_body, body["From"])
+        
         if "FINISHED" in response and body["From"] in stress_relief_dict:
             # Go into stress relief workflow
             stress_relief_dict[body["From"]] = True
@@ -294,7 +299,11 @@ def handle_whatsapp_message(body):
             msg_logs = message_log_dict[body["From"]]["current_session"]
             convo_history = copy.copy(msg_logs)
             convo_history.pop(0)
-            convo_history.append({"role": "system", "content": "Rewrite your last message so that you check with the user to determine whether they are stressed."})
+            if exp_condition == 0:
+                convo_history.append({"role": "system", "content": "Rewrite your last message so that you check with the user to determine whether they are stressed. Be professional and cold. Do not be empathetic."})
+            else:
+                convo_history.append({"role": "system", "content": "Rewrite your last message so that you check with the user to determine whether they are stressed."})
+            
             response = openai_lm(messages=convo_history)[0]
             message_log_dict[body["From"]]["current_session"][-1]["content"] = response
             stress_relief_dict.update({body["From"]: 1})
