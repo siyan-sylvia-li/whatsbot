@@ -7,7 +7,7 @@ SESSION_SUMMARY
 Please guide the conversation, following the agenda below, and make sure the core content is included. You can paraphrase if needed. Ask at most one question at a time.
 
 The agenda is as follows:
-1. Asking about the user's past two days of experience with respect to physical activity:
+1. Asking about the user's past two days of experience with respect to physical activity. Make sure you include all of the following questions:
 a) How have you been these past two days?
 b) How did your plan for physical activity go? Did you get a chance to [insert the activity previously discussed]?
 c) When you were doing the physical activity, how did you feel emotionally?

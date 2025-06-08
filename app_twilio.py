@@ -148,7 +148,7 @@ def make_openai_request(message, from_number, non_empathetic=False):
         if non_empathetic:
             response = client.chat.completions.create(
                 model="gpt-4o",
-                messages=message_log + [{"role": "system", "content": "Be professional, cold, and succinct. Do not be empathetic."}],
+                messages=message_log + [{"role": "system", "content": "You should be very professional and cold when responding. Do not be empathetic."}],
                 temperature=0.2,
             )
         else:
@@ -217,12 +217,23 @@ def create_ping(from_number):
     else:
         ping_msg = ping_msg.replace("SESSION_SINGULAR_PLURAL", "session")
     ping_msg = ping_msg.replace("SESSION_SUMMARY", session_log_dict[from_number]["session_summaries"][-1])
+    if from_number in exp_id_map:
+        _, exp_condition = exp_id_map[from_number]
+    else:
+        exp_condition = 0
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "system", "content": ping_msg}],
-            temperature=1.0,
-        )
+        if exp_condition == 0:
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "system", "content": ping_msg}, {"role": "system", "content": "You should be very professional and cold when responding. Do not be empathetic."}],
+                temperature=0.2,
+            )
+        else:
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "system", "content": ping_msg}],
+                temperature=0.8,
+            )
         response_message = response.choices[0].message.content
         print(f"openai response: {response_message}")
         update_message_log(MAINTENANCE_PROMPT.replace("SESSION_SUMMARY", session_log_dict[from_number]["session_summaries"][-1]), from_number, "system")
@@ -300,7 +311,7 @@ def handle_whatsapp_message(body):
             convo_history = copy.copy(msg_logs)
             convo_history.pop(0)
             if exp_condition == 0:
-                convo_history.append({"role": "system", "content": "Rewrite your last message so that you check with the user to determine whether they are stressed. Be professional and cold. Do not be empathetic."})
+                convo_history.append({"role": "system", "content": "Rewrite your last message so that you check with the user to determine whether they are stressed. Be professional and cold when responding. Do not be empathetic."})
             else:
                 convo_history.append({"role": "system", "content": "Rewrite your last message so that you check with the user to determine whether they are stressed."})
             
