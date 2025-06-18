@@ -149,7 +149,7 @@ def make_openai_request(message, from_number, non_empathetic=False):
             response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=message_log + [{"role": "system", "content": "You should be very professional and cold when responding. Do not be empathetic."}],
-                temperature=0.2,
+                temperature=1.0,
             )
         else:
             response = client.chat.completions.create(
@@ -261,7 +261,7 @@ def handle_whatsapp_message(body):
         if "EXP_ID" in message_body:
             exp_id = message_body.replace("EXP_ID", "").strip()
             # exp_condition = random.choice([0, 1, 2])
-            exp_condition = 0
+            exp_condition = 1
             exp_id_map.update({
                 body["From"]: (exp_id, exp_condition)
             })

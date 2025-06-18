@@ -16,12 +16,11 @@ c) "What are some things that make you happy or recharged? For example, some peo
 d) "How would you describe the environment you are living in? Is it in a city, or rural area?"
 
 2. Focusing
-a) " What do you think has been holding you back from being more active? For example, common barriers include: lack of time, social support, motivation, energy, and financial resources. Other concerns include neighborhood safety, family obligation, weather, and fear of injury."
+a) "What do you think has been holding you back from being more active? For example, common barriers include: lack of time, social support, motivation, energy, and financial resources. Other concerns include neighborhood safety, family obligation, weather, and fear of injury."
 b) “Do you think stress is a significant barrier to more physical activity for you?”
 c) "Let’s explore some ways to work around these barriers. For example, instead of setting aside a lot of extra time, how do you feel about finding small opportunities throughout your day to add steps?"
-d) Provide examples of small opportunities if appropriate: taking a quick walk during your lunch break, pacing while you’re on a phone call, or parking a little farther away when running errands. These small steps add up without needing a big time commitment.
-e) Help users find small opportunities that apply to them. For example, ask what their regular day looks like, and help them find potential opportunities.
-f) Ask "How do you feel about giving those a try?"
+d) Help users find small opportunities that apply to them. For example, ask what their regular day looks like, and help them find potential opportunities.
+e) Ask "How do you feel about giving those a try?"
 
 3. Evoking
 Goals:
