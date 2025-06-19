@@ -102,13 +102,52 @@ from twilio.rest import Client
 
 twilio_client = Client(TWILIO_SID, TWILIO_TOKEN)
 
+def split_message_by_period(text, max_length=1600):
+    """
+        Twilio cannot send messages over 1600 characters. Instead of breaking it up into chunks mid sentence, this function finds the last period (full stop) in the sentence and adds that as a chunk. This makes the message more readable. This function is only called if the message is greater than 1600 characters. 
+    """
+    chunks = []
+    start = 0
+    
+    while start < len(text): 
+        # get the minimum between start indx + max_length and len(text) to determine the window
+        end = min(start + max_length, len(text))
+        
+        # find the last period from start and end indexes
+        period_index = text.rfind('.', start, end)
+        
+        # no period_index found in the search, so period_index will be the end
+        if period_index == -1 or period_index <= start: 
+            period_index = end
+        else: 
+            # include the period in the text
+            period_index += 1
+        
+        # append and remove any whitespaces
+        chunks.append(text[start:period_index].strip())
+        # continue doing the same for the next characters
+        start = period_index
+    
+    return chunks
 # send the response as a WhatsApp message back to the user
 def send_whatsapp_message(body, message):
-    message = twilio_client.messages.create(
-        to=body["From"],
-        from_=TWILIO_NUMBER,
-        body=message)
-    print(f"whatsapp message response: {message}")
+    # if message length is greater than 1600, break it into readable chunks. More info is provided in the split_message_by_period function
+    if len(message) > 1600: 
+        chunks = split_message_by_period(message)
+        for chunk in chunks: 
+            twilio_msg_sid = twilio_client.messages.create(
+                to=body["From"],
+                from_=TWILIO_NUMBER,
+                body=chunk
+            )
+            print(f"Sent chunk, sid: {twilio_msg_sid}")
+    else: 
+        twilio_msg_sid = twilio_client.messages.create(
+            to=body["From"],
+            from_=TWILIO_NUMBER,
+            body=message
+        )
+        
 
 
 # create a message log for each phone number and return the current message log
@@ -275,6 +314,7 @@ def handle_whatsapp_message(body):
         return
     print("PASS 1")
     if stress_relief_dict.get(body["From"], False):
+        print(">>> inside stress_relief_dict if statement")
         response = make_stress_relief_response(message_body, body["From"])
     elif body["From"] in session_log_dict and session_log_dict[body["From"]]["current_session"] > 1:
         if exp_condition == 0:
@@ -496,4 +536,4 @@ if __name__ == "__main__":
     parser.add_argument("--empathy", action="store_true")
     args = parser.parse_args()
     
-    app.run(debug=True, use_reloader=True)
+    app.run(port=5050, debug=True, use_reloader=True)
