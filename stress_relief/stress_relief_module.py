@@ -311,7 +311,7 @@ class StressReliefModule:
         
         return response
 
-    def _select_intervention(self, category: str, user_id: str) -> Tuple[str, Dict[str, Any]]:
+    def _select_intervention(self, category: str, user_id: str, message: str) -> Tuple[str, Dict[str, Any]]:
         """Select the most appropriate intervention based on user history and preferences.
         
         Args:
@@ -391,9 +391,14 @@ class StressReliefModule:
         User preferences and patterns:
         {user_preferences}
         
+        User's message to the chatbot:
+        {message}
+        
         Choose ONE intervention from the available list that would be most helpful for this user right now.
         Consider their preferences (higher scores), but also provide variety if they've used similar interventions repeatedly.
         Take into account their feedback messages to understand what works well for them.
+        If scores, feedback, preferences, recent interactions, patterns, or messages are not present above, choose an intervention that is appropriate to reduce the current stress category.
+        If the stress category is general, randomize the intervention from the list. Use user's message as context to help you choose the best one if needed.
         
         Return ONLY the index number of the chosen intervention, nothing else.
         """
@@ -412,7 +417,7 @@ class StressReliefModule:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "You are an AI that selects the best stress relief intervention based on user history and feedback."},
+                    {"role": "system", "content": "You are an AI that selects the best stress relief intervention based on user history and feedback. If history and feedback are not present, take an educated guess"},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=10,
@@ -561,12 +566,12 @@ class StressReliefModule:
         else:
             category = result
             confidence = 1.0
-            
+
         print(f"Detected category: {category} (confidence: {confidence:.2f})")
         
         # Step 3: Intervention Selection (LLM + user scores)
         print("\n3. INTERVENTION SELECTION (LLM + user scores)")
-        intervention_type, intervention = self._select_intervention(category, user_id)
+        intervention_type, intervention = self._select_intervention(category, user_id, message)
         print(f"Selected intervention: {intervention['name']} ({intervention_type})")
         
         # Step 4: LLM Prompt Construction
