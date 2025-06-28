@@ -5,6 +5,9 @@ class InterventionDatabase:
 
     def __init__(self):
         """Initialize the intervention database."""
+        self.intervention_categories = [
+            "relaxation", "reappraisal", "positive_experiences", "gratitude", "resource_buffers"
+        ]
         self.interventions = {
             # 1. Relaxation (Breath Awareness / Centering)
             "relaxation": [
@@ -148,17 +151,17 @@ class InterventionDatabase:
         }
 
         # Mapping from stress categories to intervention types
-        self.category_to_intervention = {
-            "anxiety": ["relaxation", "resource_buffers"],
-            "sadness": ["gratitude", "positive_experiences"],
-            "anger": ["reappraisal", "relaxation"],
-            "overwhelm": ["relaxation", "resource_buffers"],
-            "general": ["positive_experiences", "gratitude"]
-}
+        # self.category_to_intervention = {
+        #     "anxiety": ["relaxation", "resource_buffers"],
+        #     "sadness": ["gratitude", "positive_experiences"],
+        #     "anger": ["reappraisal", "relaxation"],
+        #     "overwhelm": ["relaxation", "resource_buffers"],
+        #     "general": ["positive_experiences", "gratitude"]
+# }
 
-    def get_interventions_for_category(self, category: str) -> List[str]:
-        """Get intervention types suitable for a specific stress category."""
-        return self.category_to_intervention.get(category, ["relaxation", "positive_experiences"])
+    # def get_interventions_for_category(self, category: str) -> List[str]:
+    #     """Get intervention types suitable for a specific stress category."""
+    #     return self.category_to_intervention.get(category, ["relaxation", "positive_experiences"])
 
     def get_intervention(self, intervention_type: str, index: int = 0) -> Dict[str, Any]:
         """Get a specific intervention."""

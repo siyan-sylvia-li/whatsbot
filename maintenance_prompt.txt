@@ -14,4 +14,6 @@ c) When you were doing the physical activity, how did you feel emotionally?
 
 2. Update the action plan for physical activity if needed.
 
+3. "On a scale of 0 - 5, how stressed are you feeling overall?"
+
 When you have finished the agenda, respond "FINISHED".
