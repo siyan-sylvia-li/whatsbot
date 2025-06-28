@@ -12,6 +12,8 @@ import copy
 from argparse import ArgumentParser
 import dotenv
 import datetime
+import uuid
+import time
 
 import random
 random.seed(42)
@@ -47,6 +49,27 @@ whatsapp_token = os.environ.get("WHATSAPP_TOKEN")
 verify_token = os.environ.get("VERIFY_TOKEN")
 
 from stress_relief import StressReliefModule
+
+# in-memory storage imports and configurations
+import faiss
+import numpy as np
+EMBEDDING_MODEL = "text-embedding-3-small"
+INDEX_FILE = "chat_index.faiss"
+METADATA_FILE = "chat_metadata.json"
+dim = 1536
+faiss_index = None
+
+# in-memory storage file creations
+if os.path.exists(INDEX_FILE):
+    faiss_index = faiss.read_index(INDEX_FILE)
+else: 
+    faiss_index = faiss.IndexFlat(dim) 
+    
+
+if not os.path.exists(METADATA_FILE): 
+    json.dump({}, open(METADATA_FILE, "w+"))
+chat_metadata = json.load(open(METADATA_FILE))
+
 
 bot = StressReliefModule(
         profile_path="user_profiles.json",
@@ -102,6 +125,14 @@ from twilio.rest import Client
 
 twilio_client = Client(TWILIO_SID, TWILIO_TOKEN)
 
+def save_state(): 
+    faiss.write_index(faiss_index, INDEX_FILE)
+    with open(METADATA_FILE, "w") as f: 
+        json.dump(chat_metadata, f, indent=2)
+
+def get_embedding(text: str): 
+    return client.embeddings.create(input=text, model=EMBEDDING_MODEL).data[0].embedding
+
 def split_message_by_period(text, max_length=1600):
     """
         Twilio cannot send messages over 1600 characters. Instead of breaking it up into chunks mid sentence, this function finds the last period (full stop) in the sentence and adds that as a chunk. This makes the message more readable. This function is only called if the message is greater than 1600 characters. 
@@ -129,6 +160,7 @@ def split_message_by_period(text, max_length=1600):
         start = period_index
     
     return chunks
+
 # send the response as a WhatsApp message back to the user
 def send_whatsapp_message(body, message):
     # if message length is greater than 1600, break it into readable chunks. More info is provided in the split_message_by_period function
@@ -148,8 +180,6 @@ def send_whatsapp_message(body, message):
             body=message
         )
         
-
-
 # create a message log for each phone number and return the current message log
 def update_message_log(message, phone_number, role):
     if phone_number not in message_log_dict:
@@ -174,11 +204,9 @@ def update_message_log(message, phone_number, role):
     json.dump(message_log_dict, open("message_logs.json", "w+"))
     return message_log_dict[phone_number]["current_session"]
 
-
 # remove last message from log if OpenAI request fails
 def remove_last_message_from_log(phone_number):
     message_log_dict[phone_number]["current_session"].pop()
-
 
 # make request to OpenAI
 def make_openai_request(message, from_number, non_empathetic=False):
@@ -204,7 +232,6 @@ def make_openai_request(message, from_number, non_empathetic=False):
         response_message = "Sorry, the OpenAI API is currently overloaded or offline. Please try again later."
         remove_last_message_from_log(from_number)
     return response_message
-
 
 def make_empathetic_response(message, from_number):
     try:
@@ -292,7 +319,6 @@ def create_ping(from_number):
     json.dump(user_job_dict, open("user_job_dict.json", "w+"))
     return response_message
 
-
 # handle WhatsApp messages of different type
 def handle_whatsapp_message(body):
     if body["MessageType"] == "text":
@@ -314,7 +340,6 @@ def handle_whatsapp_message(body):
         return
     print("PASS 1")
     if stress_relief_dict.get(body["From"], False):
-        print(">>> inside stress_relief_dict if statement")
         response = make_stress_relief_response(message_body, body["From"])
     elif body["From"] in session_log_dict and session_log_dict[body["From"]]["current_session"] > 1:
         if exp_condition == 0:
@@ -363,27 +388,84 @@ def handle_whatsapp_message(body):
     
     if "FINISHED" in response:
         response = response.replace("FINISHED.", "").replace("FINISHED", "")
-        
+    
+    # summarize session and store the summary of the convo in vectorDB
+    # current_session_messages = copy.copy(message_log_dict[body["From"]]["current_session"])
+    # formatted_convo = format_conversation(current_session_messages)
+    # summary_response = openai.chat.completions.create(
+    #         model="gpt-4o-mini",
+    #         messages=[{"role": "user", "content": SUMMARY_PROMPT + "\n\n" + formatted_convo}],
+    #         temperature=1.0,
+    #     )
+    
+    curr_time = datetime.datetime.now(datetime.timezone.utc)
+    """
+    NOTE-UNCOMMENT LINE 405-418 WHEN RUNNING CHAT APP FOR THE FIRST TIME
+    THIS STORES THE SUMMARY SO IT CAN QUERY LATER. 
+    FILE CREATION AND INITIALIZATION TAKES PLACE AT THE TOP.
+    """
+    # response_message = summary_response.choices[0].message.content.strip()
+    # embedding = get_embedding(response_message)
+    # faiss_index.add(np.array([embedding]).astype("float32"))
+    # chat_metadata[str(faiss_index.ntotal-1)] = {
+    #     "session_id": str(uuid.uuid4()),
+    #     "user_id": body["From"],
+    #     "timestamp": curr_time.isoformat(),
+    #     "summary": response_message
+    # }
+    # save_state()
+    # print(">>> printing response_message", response_message)
+    # print(">>> printing embedding", embedding)
+    # print(">>> print chat_metadata", chat_metadata)
+    
+    start = time.time()
+    query = "Is the user managing stress?"
+    query_embedding = np.array([get_embedding(query)]).astype("float32")
+    D, I = faiss_index.search(query_embedding, k=3)
+    for idx in I[0]: 
+        try: 
+            session = chat_metadata[str(idx)]
+            print(">>> printing session")
+            print(session)
+        except Exception as e:
+            print(e)
+            continue 
+    end = time.time()
+    latency = end-start
+    print(f">>> FAISS search took {latency:.4f} seconds")
     send_whatsapp_message(body, response)
     # Set up scheduling
-    curr_time = datetime.datetime.now(datetime.timezone.utc)
+    
     # datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-    if user_job_dict[body["From"]] == -1:
-        if args.short:
-            schedule_time = curr_time + datetime.timedelta(minutes=12)
-        else:
-            schedule_time = curr_time + datetime.timedelta(hours=48)
-        message = twilio_client.messages.create(
-            content_sid="HX19c29fcf2aa11e5a484bf0542a65a572",
-            to=body["From"],
-            from_=TWILIO_NUMBER,
-            messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
-            send_at=schedule_time,
-            schedule_type="fixed",
-        )
-        all_scheduled_messages.append(message)
-        print("SCHEDULED MESSAGE:", message)
-        user_job_dict.update({body["From"]: schedule_time.timestamp()})
+    # if user_job_dict[body["From"]] == -1:
+        # print(">>> user_job_dict === -1")
+        # if args.short:
+        #     schedule_time = curr_time + datetime.timedelta(minutes=12)
+        # else:
+        #     schedule_time = curr_time + datetime.timedelta(hours=48)
+        # message = twilio_client.messages.create(
+        #     content_sid="HX19c29fcf2aa11e5a484bf0542a65a572",
+        #     to=body["From"],
+        #     from_=TWILIO_NUMBER,
+        #     messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
+        #     send_at=schedule_time,
+        #     schedule_type="fixed",
+        # )
+        # all_scheduled_messages.append(message)
+        # print("SCHEDULED MESSAGE:", message)
+        # user_job_dict.update({body["From"]: schedule_time.timestamp()})
+    
+    schedule_time = curr_time + datetime.timedelta(minutes=10)
+    message = twilio_client.messages.create(
+        content_sid="HX19c29fcf2aa11e5a484bf0542a65a572",
+        to=body["From"],
+        from_=TWILIO_NUMBER,
+        messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
+        send_at=schedule_time,
+        schedule_type="fixed",
+    )
+    all_scheduled_messages.append(message)
+    print("SCHEDULED MSG: ", message)
     json.dump(user_job_dict, open("user_job_dict.json", "w+"))
 
 
