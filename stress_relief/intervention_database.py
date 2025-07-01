@@ -49,13 +49,13 @@ class InterventionDatabase:
             ],
 
             # 2. Reappraisal (Cognitive Restructuring)
-            "reappraisal": [
-                {
-                    "name": "Script from Wiley SMI",
-                    "link": "https://onlinelibrary.wiley.com/doi/full/10.1002/smi.2759",
-                    "description": "A guided cognitive reappraisal script to help reinterpret negative experiences objectively, fostering emotional resilience."
-                }
-            ],
+            # "reappraisal": [
+            #     {
+            #         "name": "Script from Wiley SMI",
+            #         "link": "https://onlinelibrary.wiley.com/doi/full/10.1002/smi.2759",
+            #         "description": "A guided cognitive reappraisal script to help reinterpret negative experiences objectively, fostering emotional resilience."
+            #     }
+            # ],
 
             # 3. Positive Experiences & Mood Induction
             "positive_experiences": [

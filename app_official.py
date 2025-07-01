@@ -289,10 +289,10 @@ def create_ping(from_number):
         if twilio_client is not None:
             print(f"openai response: {response_message}")
         maintenance_p = MAINTENANCE_PROMPT.replace("SESSION_SUMMARY_1", session_log_dict[from_number]["session_summaries"][-1])
-        if len(session_log_dict[from_number]["session_summaries"]) > 1:
-            maintenance_p = maintenance_p.replace("SESSION_SUMMARY_2", session_log_dict[from_number]["session_summaries"][-2])
-        else:
-            maintenance_p = maintenance_p.replace("SESSION_SUMMARY_2", "N/A")
+        # if len(session_log_dict[from_number]["session_summaries"]) > 1:
+        #     maintenance_p = maintenance_p.replace("SESSION_SUMMARY_2", session_log_dict[from_number]["session_summaries"][-2])
+        # else:
+        #     maintenance_p = maintenance_p.replace("SESSION_SUMMARY_2", "N/A")
         maintenance_p = maintenance_p.replace("ACTION_PLAN", session_log_dict[from_number]["action_plan"])
         # TODO: Identify topic & retrieve
         # Identify topic from the past three conversation summaries
@@ -347,7 +347,7 @@ def handle_whatsapp_message(body):
             response = make_openai_request(message_body, body["From"])
         elif emp_condition == 2:
             response = make_empathetic_response(message_body, body["From"])
-        if "FINISHED" in response:
+        if "FINISHED" in response or ("scale of 0 - 5" in response and "stressed" in response):
             # Go into stress relief workflow
             stress_relief_dict.update({
                 body["From"]: 1

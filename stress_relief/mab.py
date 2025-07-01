@@ -18,7 +18,7 @@ class UCBBandit:
             self.values = np.array(mab_state["values"])
             self.total_counts = mab_state["total_counts"]
         else:
-            self.n_arms = 5
+            self.n_arms = 4
             self.counts = np.zeros(self.n_arms)
             self.values = np.zeros(self.n_arms)
             self.total_counts = 0
