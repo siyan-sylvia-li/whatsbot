@@ -136,13 +136,13 @@ class StressReliefModule:
             resp = self.lm(messages=msg_history + [
                 {
                     "role": "system",
-                    "prompt": "Respond appropriately and say goodbye to the user, telling them that you will be checking in in two days."
+                    "content": "Respond appropriately and say goodbye to the user, telling them that you will be checking in in two days."
                 }
             ])[0]
-            return 3, resp
+            return False, resp
         
         resp = "Can you please provide the specific rating of how helpful the practice was? Thank you!"
-        return False, resp
+        return 2, resp
         
 
         

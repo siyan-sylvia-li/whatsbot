@@ -12,6 +12,7 @@ import copy
 from argparse import ArgumentParser
 import dotenv
 import datetime
+import uuid
 
 import random
 random.seed(42)
@@ -49,6 +50,8 @@ verify_token = os.environ.get("VERIFY_TOKEN")
 from stress_relief import StressReliefModule
 
 stress_relief = StressReliefModule("user_profiles.json")
+
+from long_term_memory import build_faiss_index, identify_and_retrieve
 
 # Message log dictionary to enable conversation over multiple messages
 if not os.path.exists("message_logs.json"):
@@ -88,6 +91,7 @@ INITIAL_PROMPT = open("initial_prompt.txt").read()
 SUMMARY_PROMPT = open("summarization_prompt.txt").read()
 PING_PROMPT = open("ping_prompt.txt").read()
 MAINTENANCE_PROMPT = open("maintenance_prompt.txt").read()
+ACTION_PLAN_PROMPT = open("action_plan_prompt.txt").read()
 
 TWILIO_NUMBER = "whatsapp:+18774467072"
 TWILIO_SID = os.environ.get("TWILIO_ACCOUNT_SID")
@@ -128,7 +132,7 @@ def split_message_by_period(text, max_length=1600):
 
 
 def compute_emp_condition(exp_condition, enroll_time):
-    num_weeks = (datetime.datetime.now().timestamp - enroll_time) // (24 * 60 * 60 * 7)
+    num_weeks = int((datetime.datetime.now().timestamp() - enroll_time) // (24 * 60 * 60 * 7))
     if exp_condition == 0:
         return [0, 1][num_weeks % 2]
     else:
@@ -137,6 +141,9 @@ def compute_emp_condition(exp_condition, enroll_time):
 
 # send the response as a WhatsApp message back to the user
 def send_whatsapp_message(body, message):
+    if twilio_client is None:
+        print("ASSISTANT >>", message)
+        return
     # if message length is greater than 1600, break it into readable chunks. More info is provided in the split_message_by_period function
     if len(message) > 1600: 
         chunks = split_message_by_period(message)
@@ -175,7 +182,7 @@ def update_message_log(message, phone_number, role):
             phone_number: -1
         })
         json.dump(user_job_dict, open("user_job_dict.json", "w+"))
-    message_log = {"role": role, "content": message}
+    message_log = {"role": role, "content": message, "timestamp": datetime.datetime.now().strftime("%Y/%m/%d, %H:%M:%S")}
     message_log_dict[phone_number]["current_session"].append(message_log)
     json.dump(message_log_dict, open("message_logs.json", "w+"))
     return message_log_dict[phone_number]["current_session"]
@@ -203,7 +210,8 @@ def make_openai_request(message, from_number, non_empathetic=False):
                 temperature=1.0,
             )
         response_message = response.choices[0].message.content
-        print(f"openai response: {response_message}")
+        if twilio_client is not None:
+            print(f"openai response: {response_message}")
         update_message_log(response_message, from_number, "assistant")
     except Exception as e:
         print(f"openai error: {e}")
@@ -217,7 +225,8 @@ def make_empathetic_response(message, from_number):
         message_log = update_message_log(message, from_number, "user")
         convo_history = copy.copy(message_log)
         response_message = empathy_responder.respond_empathetically(user_input=message, convo_history=convo_history)[0]
-        print(f"empathetic response: {response_message}")
+        if twilio_client is not None:
+            print(f"empathetic response: {response_message}")
         update_message_log(response_message, from_number, "assistant")
     except Exception as e:
         print(f"openai error: {e}")
@@ -239,7 +248,8 @@ def make_stress_relief_response(message, from_number, non_empathetic=False):
             cont, response_message = stress_relief.process_user_feedback(message, from_number, message_log, non_empathetic)
             stress_relief_dict.update({from_number: cont})
             json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
-        print(f"stress relief response: {response_message}")
+        if twilio_client is not None:
+            print(f"stress relief response: {response_message}")
         print(stress_relief_dict[from_number])
         update_message_log(response_message, from_number, "assistant")
     except Exception as e:
@@ -276,8 +286,20 @@ def create_ping(from_number):
                 temperature=0.8,
             )
         response_message = response.choices[0].message.content
-        print(f"openai response: {response_message}")
-        update_message_log(MAINTENANCE_PROMPT.replace("SESSION_SUMMARY", session_log_dict[from_number]["session_summaries"][-1]), from_number, "system")
+        if twilio_client is not None:
+            print(f"openai response: {response_message}")
+        maintenance_p = MAINTENANCE_PROMPT.replace("SESSION_SUMMARY_1", session_log_dict[from_number]["session_summaries"][-1])
+        if len(session_log_dict[from_number]["session_summaries"]) > 1:
+            maintenance_p = maintenance_p.replace("SESSION_SUMMARY_2", session_log_dict[from_number]["session_summaries"][-2])
+        else:
+            maintenance_p = maintenance_p.replace("SESSION_SUMMARY_2", "N/A")
+        maintenance_p = maintenance_p.replace("ACTION_PLAN", session_log_dict[from_number]["action_plan"])
+        # TODO: Identify topic & retrieve
+        # Identify topic from the past three conversation summaries
+        topic, ret = identify_and_retrieve(session_log_dict[from_number]["session_summaries"][-3:],
+                                           session_log_dict[from_number]["faiss_meta_prefix"])
+        maintenance_p = maintenance_p.replace("DISCUSSION_TOPIC", topic).replace("RETRIEVAL_CONTENT", ret)
+        update_message_log(maintenance_p, from_number, "system")
         update_message_log(response_message, from_number, "assistant")
         session_log_dict[from_number]["current_session"] += 1
         json.dump(session_log_dict, open("session_logs.json", "w+"))
@@ -302,9 +324,10 @@ def handle_whatsapp_message(body):
         if "EXP_ID" in message_body:
             exp_id = message_body.replace("EXP_ID", "").strip()
             exp_condition = random.choice([0, 1])
+            enroll_time = datetime.datetime.now().timestamp()
             # 0 means starting with non-empathetic, 1 means starting with empathetic
             exp_id_map.update({
-                body["From"]: (exp_id, exp_condition, datetime.datetime.now().timestamp())
+                body["From"]: (exp_id, exp_condition, enroll_time)
             })
             json.dump(exp_id_map, open("exp_id_map.json", "w+"))
             message_body = "Hi"
@@ -346,7 +369,7 @@ def handle_whatsapp_message(body):
     # Set up scheduling
     curr_time = datetime.datetime.now(datetime.timezone.utc)
     # datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-    if user_job_dict[body["From"]] == -1:
+    if user_job_dict[body["From"]] == -1 and twilio_client is not None:
         if args.short:
             schedule_time = curr_time + datetime.timedelta(minutes=12)
         else:
@@ -371,6 +394,8 @@ def handle_whatsapp_message(body):
 
 
 def cancel_all_scheduled_messages():
+    if twilio_client is None:
+        return
     if len(all_scheduled_messages) == 0:
         print("No messages to cancel")
     for m in all_scheduled_messages:
@@ -477,13 +502,25 @@ def summarize_session(phone_number):
     if len(message_log_dict[phone_number]["current_session"]):
         current_session_messages = copy.copy(message_log_dict[phone_number]["current_session"])
         formatted_convo = format_conversation(current_session_messages)
+        if "action_plan" not in session_log_dict[phone_number]:
+            action_plan = str(None)
+        else:
+            action_plan = session_log_dict[phone_number]["action_plan"]
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": ACTION_PLAN_PROMPT.replace("USER_CONVO", formatted_convo).replace("PREV_ACTION_PLAN", action_plan)}]
+        )
+        response_message = response.choices[0].message.content
+        session_log_dict[phone_number].update({
+            "action_plan": response_message
+        })
         response = openai.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": SUMMARY_PROMPT + "\n\n" + formatted_convo}],
                 temperature=1.0,
             )
         response_message = response.choices[0].message.content
-        print(response_message)
+        all_bullets = [x for x in response_message.split("\n") if len(x) > 5]
         # Find whether stress is a signficant barrier
         if session_log_dict[phone_number]["current_session"] == 1:
             stress_judge = openai.chat.completions.create(
@@ -495,8 +532,20 @@ def summarize_session(phone_number):
                 stress_relief_dict.update({
                     phone_number: False
                 })
-        if phone_number in session_log_dict:
-            session_log_dict[phone_number]["session_summaries"].append(response_message)
+        session_log_dict[phone_number]["session_summaries"].append(response_message)
+        
+        if "faiss_meta_prefix" not in session_log_dict[phone_number]:
+            session_log_dict[phone_number].update(
+                {
+                    "faiss_meta_prefix": __p_location__ + "/long_term_memory/storage/" + str(uuid.uuid4())
+                }
+            )
+        # Now we process session summary messages
+        session_date = datetime.datetime.strptime(current_session_messages[-1]["timestamp"],
+                                                  "%Y/%m/%d, %H:%M:%S").date().strftime("%Y-%m-%d")
+        all_bullets = [{"text": x, "session_date": session_date} for x in all_bullets]
+        build_faiss_index(all_bullets, session_log_dict[phone_number]["faiss_meta_prefix"])
+        # Split message into different sentences
         session_num = f"session_" + str(session_log_dict[phone_number]["current_session"])
         message_log_dict[phone_number].update({
             session_num: current_session_messages

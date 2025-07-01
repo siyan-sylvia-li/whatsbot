@@ -1,0 +1,1 @@
+from embed_bullets import build_faiss_index
