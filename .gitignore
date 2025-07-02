@@ -163,3 +163,4 @@ cython_debug/
 user_*.json
 *dict.json
 exp_id_map.json
+long_term_memory/storage/*
