@@ -18,16 +18,17 @@ if __name__ == "__main__":
     }
 
     
-    exp_id_map = json.load(open("exp_id_map.json"))
-    og_data = exp_id_map[BODY_TEMPLATE["From"]]
-    if args.empathetic:
-        og_data[1] = 1
-    else:
-        og_data[1] = 0
-    og_data[2] = datetime.datetime.now().timestamp()
-    exp_id_map[BODY_TEMPLATE["From"]] = og_data
-    json.dump(exp_id_map, open("exp_id_map.json", "w+"))
-    
+    # if BODY_TEMPLATE["From"] in exp_id_map:
+    #     og_data = exp_id_map[BODY_TEMPLATE["From"]]
+    #     if args.empathetic:
+    #         og_data[1] = 1
+    #     else:
+    #         og_data[1] = 0
+    #     og_data[2] = datetime.datetime.now().timestamp()
+    #     exp_id_map[BODY_TEMPLATE["From"]] = og_data
+    #     json.dump(exp_id_map, open("exp_id_map.json", "w+"))
+
+    CHANGED = False
 
     while True:
         user_input = input("USER >> ")
@@ -38,3 +39,17 @@ if __name__ == "__main__":
             body_t["Body"] = user_input
         twilio_client = None
         app_official.handle_whatsapp_message(body_t)
+        
+        if not CHANGED:
+            exp_id_map = json.load(open("exp_id_map.json"))
+            if BODY_TEMPLATE["From"] in exp_id_map:
+                og_data = exp_id_map[BODY_TEMPLATE["From"]]
+                if args.empathetic:
+                    og_data[1] = 1
+                else:
+                    og_data[1] = 0
+                og_data[2] = datetime.datetime.now().timestamp()
+                exp_id_map[BODY_TEMPLATE["From"]] = og_data
+                json.dump(exp_id_map, open("exp_id_map.json", "w+"))
+                CHANGED = True
+                app_official.exp_id_map = exp_id_map

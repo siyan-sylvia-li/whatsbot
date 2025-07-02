@@ -88,6 +88,7 @@ exp_id_map = json.load(open("exp_id_map.json"))
 LANGUGAGE = "en-US"
 
 INITIAL_PROMPT = open("initial_prompt.txt").read()
+INITIAL_PROMPT_NE = open("initial_prompt_ne.txt").read()
 SUMMARY_PROMPT = open("summarization_prompt.txt").read()
 PING_PROMPT = open("ping_prompt.txt").read()
 MAINTENANCE_PROMPT = open("maintenance_prompt.txt").read()
@@ -141,6 +142,7 @@ def compute_emp_condition(exp_condition, enroll_time):
 
 # send the response as a WhatsApp message back to the user
 def send_whatsapp_message(body, message):
+    update_message_log(message, body["From"], "assistant")
     if twilio_client is None:
         print("ASSISTANT >>", message)
         return
@@ -164,12 +166,18 @@ def send_whatsapp_message(body, message):
 
 
 # create a message log for each phone number and return the current message log
-def update_message_log(message, phone_number, role):
+def update_message_log(message, phone_number, role, non_empathetic=False):
     if phone_number not in message_log_dict:
-        initial_log = {
-            "role": "system",
-            "content": INITIAL_PROMPT,
-        }
+        if non_empathetic:
+            initial_log = {
+                "role": "system",
+                "content": INITIAL_PROMPT_NE,
+            }
+        else:
+            initial_log = {
+                "role": "system",
+                "content": INITIAL_PROMPT,
+            }
         message_log_dict[phone_number] = {"current_session": [initial_log]}
     if phone_number not in session_log_dict:
         session_log_dict[phone_number] = {
@@ -196,11 +204,11 @@ def remove_last_message_from_log(phone_number):
 # make request to OpenAI
 def make_openai_request(message, from_number, non_empathetic=False):
     try:
-        message_log = update_message_log(message, from_number, "user")
+        message_log = update_message_log(message, from_number, "user", non_empathetic)
         if non_empathetic:
             response = client.chat.completions.create(
                 model="gpt-4o",
-                messages=message_log + [{"role": "system", "content": "You should be very professional and cold when responding. Do not be empathetic."}],
+                messages=message_log + [{"role": "system", "content": "Do not be empathetic when responding."}],
                 temperature=1.0,
             )
         else:
@@ -212,7 +220,6 @@ def make_openai_request(message, from_number, non_empathetic=False):
         response_message = response.choices[0].message.content
         if twilio_client is not None:
             print(f"openai response: {response_message}")
-        update_message_log(response_message, from_number, "assistant")
     except Exception as e:
         print(f"openai error: {e}")
         response_message = "Sorry, the OpenAI API is currently overloaded or offline. Please try again later."
@@ -227,7 +234,6 @@ def make_empathetic_response(message, from_number):
         response_message = empathy_responder.respond_empathetically(user_input=message, convo_history=convo_history)[0]
         if twilio_client is not None:
             print(f"empathetic response: {response_message}")
-        update_message_log(response_message, from_number, "assistant")
     except Exception as e:
         print(f"openai error: {e}")
         response_message = "Sorry, the OpenAI API is currently overloaded or offline. Please try again later."
@@ -251,7 +257,6 @@ def make_stress_relief_response(message, from_number, non_empathetic=False):
         if twilio_client is not None:
             print(f"stress relief response: {response_message}")
         print(stress_relief_dict[from_number])
-        update_message_log(response_message, from_number, "assistant")
     except Exception as e:
         print(f"openai error: {e}")
         response_message = "Sorry, the OpenAI API is currently overloaded or offline. Please try again later."
@@ -276,7 +281,7 @@ def create_ping(from_number):
         if emp_condition == 0:
             response = client.chat.completions.create(
                 model="gpt-4o",
-                messages=[{"role": "system", "content": ping_msg}, {"role": "system", "content": "You should be very professional and cold when responding. Do not be empathetic."}],
+                messages=[{"role": "system", "content": ping_msg}, {"role": "system", "content": "Do not be empathetic when responding."}],
                 temperature=0.2,
             )
         else:
@@ -300,7 +305,6 @@ def create_ping(from_number):
                                            session_log_dict[from_number]["faiss_meta_prefix"])
         maintenance_p = maintenance_p.replace("DISCUSSION_TOPIC", topic).replace("RETRIEVAL_CONTENT", ret)
         update_message_log(maintenance_p, from_number, "system")
-        update_message_log(response_message, from_number, "assistant")
         session_log_dict[from_number]["current_session"] += 1
         json.dump(session_log_dict, open("session_logs.json", "w+"))
     except Exception as e:
@@ -364,7 +368,15 @@ def handle_whatsapp_message(body):
     
     if "FINISHED" in response:
         response = response.replace("FINISHED.", "").replace("FINISHED", "")
-        
+    
+    # print(response)
+    # # Need to rewrite the message to only have one question
+    # response = openai_lm(messages=[
+    #     {"role": "system", "content": "Rewrite this user message to remove any extra questions so that there is at most one question in the message."},
+    #     {"role": "user", "content": response}
+    # ])[0]
+
+    
     send_whatsapp_message(body, response)
     # Set up scheduling
     curr_time = datetime.datetime.now(datetime.timezone.utc)
