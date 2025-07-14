@@ -135,9 +135,11 @@ def split_message_by_period(text, max_length=1600):
 def compute_emp_condition(exp_condition, enroll_time):
     num_weeks = int((datetime.datetime.now().timestamp() - enroll_time) // (24 * 60 * 60 * 7))
     if exp_condition == 0:
-        return [0, 1][num_weeks % 2]
+        return [0, 1, 2, 0, 1, 2][num_weeks % 6]
+    elif exp_condition == 1:
+        return [1, 0, 2, 1, 0, 2][num_weeks % 6]
     else:
-        return [1, 0][num_weeks % 2]
+        return [2, 0, 1, 2, 0, 1][num_weeks % 6]
 
 
 # send the response as a WhatsApp message back to the user
@@ -294,10 +296,6 @@ def create_ping(from_number):
         if twilio_client is not None:
             print(f"openai response: {response_message}")
         maintenance_p = MAINTENANCE_PROMPT.replace("SESSION_SUMMARY_1", session_log_dict[from_number]["session_summaries"][-1])
-        # if len(session_log_dict[from_number]["session_summaries"]) > 1:
-        #     maintenance_p = maintenance_p.replace("SESSION_SUMMARY_2", session_log_dict[from_number]["session_summaries"][-2])
-        # else:
-        #     maintenance_p = maintenance_p.replace("SESSION_SUMMARY_2", "N/A")
         maintenance_p = maintenance_p.replace("ACTION_PLAN", session_log_dict[from_number]["action_plan"])
         # TODO: Identify topic & retrieve
         # Identify topic from the past three conversation summaries
@@ -327,7 +325,7 @@ def handle_whatsapp_message(body):
         message_body = body["Body"]
         if "EXP_ID" in message_body:
             exp_id = message_body.replace("EXP_ID", "").strip()
-            exp_condition = random.choice([0, 1])
+            exp_condition = [0, 1, 2][len(exp_id_map) % 3]
             enroll_time = datetime.datetime.now().timestamp()
             # 0 means starting with non-empathetic, 1 means starting with empathetic
             exp_id_map.update({
