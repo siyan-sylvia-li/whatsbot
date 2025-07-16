@@ -133,7 +133,10 @@ def split_message_by_period(text, max_length=1600):
 
 
 def compute_emp_condition(exp_condition, enroll_time):
-    num_weeks = int((datetime.datetime.now().timestamp() - enroll_time) // (24 * 60 * 60 * 7))
+    if args.short:
+        num_weeks = int((datetime.datetime.now().timestamp() - enroll_time) // (12 * 60))
+    else:
+        num_weeks = int((datetime.datetime.now().timestamp() - enroll_time) // (24 * 60 * 60 * 7))
     if exp_condition == 0:
         return [0, 1, 2, 0, 1, 2][num_weeks % 6]
     elif exp_condition == 1:
