@@ -6,4 +6,4 @@ USER_CONVO
 PREVIOUS ACTION PLAN:
 PREV_ACTION_PLAN
 
-Provide the updated action plan. If the user does not need the action plan to be changed, return the previous action plan. Provide your responses directly. 
+Provide the updated action plan. If the user does not need the action plan to be changed, return the previous action plan. Provide your responses directly. Keep your responses succinct and to-the-point.

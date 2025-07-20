@@ -2,4 +2,4 @@ Utilize the following empathetic response strategies when responding to the user
 
 ALL_EMPAdhere to your agenda while being empathetic. Ask at most one question at a time and avoid repeating your previous utterances.
 
-When you have finished the agenda, respond "FINISHED".
+When you have finished the agenda, respond "FINISHED". Ask at most one question at a time. Ensure that the response is natural.

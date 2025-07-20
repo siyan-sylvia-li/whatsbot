@@ -73,6 +73,9 @@ if not os.path.exists("stress_relief_logs.json"):
     json.dump({}, open("stress_relief_logs.json", "w+"))
 stress_relief_dict = json.load(open("stress_relief_logs.json"))
 
+# User experiment condition assignment
+assignment_dict = json.load(open("assignment_exps.json"))
+
 user_job_dict = {}
 
 all_scheduled_messages = []
@@ -214,7 +217,7 @@ def make_openai_request(message, from_number, non_empathetic=False):
             response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=message_log + [{"role": "system", "content": "Do not be empathetic when responding."}],
-                temperature=1.0,
+                temperature=0.5,
             )
         else:
             response = client.chat.completions.create(
@@ -224,7 +227,10 @@ def make_openai_request(message, from_number, non_empathetic=False):
             )
         response_message = response.choices[0].message.content
         if twilio_client is not None:
-            print(f"openai response: {response_message}")
+            if non_empathetic:
+                print(f"non-empathetic response: {response_message}")
+            else:
+                print(f"openai response: {response_message}")
     except Exception as e:
         print(f"openai error: {e}")
         response_message = "Sorry, the OpenAI API is currently overloaded or offline. Please try again later."
@@ -259,6 +265,13 @@ def make_stress_relief_response(message, from_number, non_empathetic=False):
             cont, response_message = stress_relief.process_user_feedback(message, from_number, message_log, non_empathetic)
             stress_relief_dict.update({from_number: cont})
             json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
+        else:
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=message_log,
+                temperature=0.5,
+            )
+            response_message = response.choices[0].message.content
         if twilio_client is not None:
             print(f"stress relief response: {response_message}")
         print(stress_relief_dict[from_number])
@@ -281,12 +294,13 @@ def create_ping(from_number):
         _, exp_condition, enroll_time = exp_id_map[from_number]
     else:
         exp_condition = 0
+        enroll_time = datetime.datetime.now().timestamp()
     emp_condition = compute_emp_condition(exp_condition, enroll_time)
     try:
         if emp_condition == 0:
             response = client.chat.completions.create(
                 model="gpt-4o",
-                messages=[{"role": "system", "content": ping_msg}, {"role": "system", "content": "Do not be empathetic when responding."}],
+                messages=[{"role": "system", "content": ping_msg + "\n\nDo not be empathetic. Minimize emoji usage."}],
                 temperature=0.2,
             )
         else:
@@ -328,7 +342,11 @@ def handle_whatsapp_message(body):
         message_body = body["Body"]
         if "EXP_ID" in message_body:
             exp_id = message_body.replace("EXP_ID", "").strip()
-            exp_condition = [0, 1, 2][len(exp_id_map) % 3]
+            if exp_id in assignment_dict:
+                exp_condition = assignment_dict[exp_id]
+            else:
+                send_whatsapp_message(body, "Sorry, your experiment ID is not in our list of participants. Please double-check and resend your message. Thank you!!")
+                return
             enroll_time = datetime.datetime.now().timestamp()
             # 0 means starting with non-empathetic, 1 means starting with empathetic
             exp_id_map.update({
@@ -581,4 +599,4 @@ if __name__ == "__main__":
     parser.add_argument("--empathy", action="store_true")
     args = parser.parse_args()
     
-    app.run(port=5050, debug=True, use_reloader=True)
+    app.run(port=5000, debug=True, use_reloader=True)

@@ -60,6 +60,7 @@ class StressReliefModule:
     def process_user_msg(self, user_rating: str, user_id: str, msg_history: List[dict], non_empathetic=False):
         # Regex to match digit 0-5 or word zero-one-two-three-four-five (case-insensitive)
         match = re.search(r'\b([0-5]|zero|one|two|three|four|five)\b', user_rating, re.IGNORECASE)
+        rating = -1
         if match:
             value = match.group(1).lower()
             word_to_num = {
@@ -74,7 +75,10 @@ class StressReliefModule:
                 rating = int(value)
             else:
                 rating = word_to_num[value]
-        if rating < 2:
+        if rating == -1:
+            resp = "Could you please let me know how much stress you are feeling on a scale of 0-5? Thank you!"
+            return 1, resp
+        if 0 <= rating < 2:
             # This is too high of a stress rating
             response = self.lm(messages=msg_history + [
                 {

@@ -6,7 +6,7 @@ class InterventionDatabase:
     def __init__(self):
         """Initialize the intervention database."""
         self.intervention_categories = [
-            "relaxation", "reappraisal", "positive_experiences", "gratitude", "resource_buffers"
+            "relaxation", "positive_experiences", "gratitude", "resource_buffers"
         ]
         self.interventions = {
             # 1. Relaxation (Breath Awareness / Centering)

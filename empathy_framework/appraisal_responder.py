@@ -6,7 +6,7 @@ import os
 from typing import List
 import copy
 
-empathy_lm = dspy.LM("openai/gpt-4o")
+empathy_lm = dspy.LM("openai/gpt-4o", temperature=0.7)
 openai_4o_mini = dspy.LM("openai/gpt-4o-mini")
 
 class SentenceSegmenter(dspy.Signature):
