@@ -9,7 +9,9 @@ from argparse import ArgumentParser
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--empathetic", action="store_true")
+    parser.add_argument("--short", action="store_true")
     args = parser.parse_args()
+    app_official.args = args
 
     BODY_TEMPLATE = {
         "From": "007",

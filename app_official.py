@@ -103,6 +103,9 @@ TWILIO_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
 TWILIO_MESSAGING_SERVICE_SID = "MGdadfd2c85ec7e22833d012852d8fa58a"
 TWILIO_SMS_NUMBER = "+18774467072"
 
+
+FINAL_GOOGLE_FORM_MESSAGE = """Please fill out this Google form:\nhttps://docs.google.com/forms/d/e/1FAIpQLSdCsJa-EtOlVczRckdA9jmNX4id2C68bfuTnBEt5IGnOqSXYw/viewform?usp=pp_url&entry.1959604237={USER_ID}&entry.78496601={SESSION_ID}"""
+
 from twilio.rest import Client
 
 twilio_client = Client(TWILIO_SID, TWILIO_TOKEN)
@@ -144,7 +147,7 @@ def compute_emp_condition(exp_condition, enroll_time):
     if exp_condition == 0:
         return [0, 1, 2, 0, 1, 2][num_weeks % 6]
     elif exp_condition == 1:
-        return [1, 0, 2, 1, 2, 0][num_weeks % 6]
+        return [1, 2, 0, 1, 2, 0][num_weeks % 6]
     else:
         return [2, 0, 1, 2, 0, 1][num_weeks % 6]
 
@@ -252,18 +255,18 @@ def make_empathetic_response(message, from_number):
         remove_last_message_from_log(from_number)
     return response_message
 
-def make_stress_relief_response(message, from_number, non_empathetic=False):
+def make_stress_relief_response(message, from_number, non_empathetic=False, final_message=None):
     stress_relief_dict = json.load(open("stress_relief_logs.json"))
     try:
         message_log = update_message_log(message, from_number, "user")
         if stress_relief_dict[from_number] == 1:
             print("ROUND 2 STRESS RELIEF CONVERSATION")
-            cont, response_message = stress_relief.process_user_msg(message, from_number, message_log, non_empathetic)
+            cont, response_message = stress_relief.process_user_msg(message, from_number, message_log, non_empathetic, final_message)
             stress_relief_dict.update({from_number: cont})
             json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
         elif stress_relief_dict[from_number] == 2:
             print("ROUND 3 STRESS RELIEF CONVERSATION")
-            cont, response_message = stress_relief.process_user_feedback(message, from_number, message_log, non_empathetic)
+            cont, response_message = stress_relief.process_user_feedback(message, from_number, message_log, non_empathetic, final_message)
             stress_relief_dict.update({from_number: cont})
             json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
         else:
@@ -357,6 +360,9 @@ def handle_whatsapp_message(body):
             message_body = "Hi"
         else:
             exp_id, exp_condition, enroll_time = exp_id_map[body["From"]]
+            session_id = "S" + str(len(message_log_dict[body["From"]]))
+            fin_google_message = FINAL_GOOGLE_FORM_MESSAGE.format(USER_ID=exp_id,
+                                                                  SESSION_ID=session_id)
         if "USER_PING" in message_body:
             message = twilio_client.messages.create(
                 content_sid="HXc786b2eee71215839682f388b9208f8f",
@@ -377,7 +383,7 @@ def handle_whatsapp_message(body):
         return
     emp_condition = compute_emp_condition(exp_condition, enroll_time)
     if stress_relief_dict.get(body["From"], False):
-        response = make_stress_relief_response(message_body, body["From"], non_empathetic=(emp_condition == 0))
+        response = make_stress_relief_response(message_body, body["From"], non_empathetic=(emp_condition == 0), final_message=fin_google_message)
     elif body["From"] in session_log_dict and session_log_dict[body["From"]]["current_session"] > 1:
         if emp_condition == 0:
             response = make_openai_request(message_body, body["From"], non_empathetic=True)
