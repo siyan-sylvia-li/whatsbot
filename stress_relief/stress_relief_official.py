@@ -16,7 +16,7 @@ class StressReliefModule:
         self.user_profile = json.load(open(user_profile_path))
         self.lm = dspy.LM(model="openai/gpt-4o")
         self.int_db = InterventionDatabase()
-        self.epsilon = 0.3
+        self.epsilon = 0.8
     
 
     def update_user_profile(self):
@@ -106,11 +106,15 @@ class StressReliefModule:
             int_choices = [x for x in all_interventions if x not in self.user_profile[user_id]["interaction_history"]["interventions"]]
             chosen = random.choice(int_choices)
         else:
-            # Find the index of the maximum score
-            chosen_ind = self.user_profile[user_id]["interaction_history"]["scores"].index(
-                max(self.user_profile[user_id]["interaction_history"]["scores"])
-            )
-            chosen = self.user_profile[user_id]["interaction_history"]["interventions"][chosen_ind]
+            if len(self.user_profile[user_id]["interaction_history"]["scores"]) > 0:
+                # Find the index of the maximum score
+                chosen_ind = self.user_profile[user_id]["interaction_history"]["scores"].index(
+                    max(self.user_profile[user_id]["interaction_history"]["scores"])
+                )
+                chosen = self.user_profile[user_id]["interaction_history"]["interventions"][chosen_ind]
+            else:
+                int_choices = [x for x in all_interventions if x not in self.user_profile[user_id]["interaction_history"]["interventions"]]
+                chosen = random.choice(int_choices)
         
         stress_rec = self.generate_from_intervention(chosen, msg_history, non_empathetic)
 

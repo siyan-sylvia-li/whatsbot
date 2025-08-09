@@ -101,6 +101,7 @@ TWILIO_NUMBER = "whatsapp:+18774467072"
 TWILIO_SID = os.environ.get("TWILIO_ACCOUNT_SID")
 TWILIO_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
 TWILIO_MESSAGING_SERVICE_SID = "MGdadfd2c85ec7e22833d012852d8fa58a"
+TWILIO_SMS_NUMBER = "+18774467072"
 
 from twilio.rest import Client
 
@@ -143,7 +144,7 @@ def compute_emp_condition(exp_condition, enroll_time):
     if exp_condition == 0:
         return [0, 1, 2, 0, 1, 2][num_weeks % 6]
     elif exp_condition == 1:
-        return [1, 0, 2, 1, 0, 2][num_weeks % 6]
+        return [1, 0, 2, 1, 2, 0][num_weeks % 6]
     else:
         return [2, 0, 1, 2, 0, 1][num_weeks % 6]
 
@@ -356,6 +357,20 @@ def handle_whatsapp_message(body):
             message_body = "Hi"
         else:
             exp_id, exp_condition, enroll_time = exp_id_map[body["From"]]
+        if "USER_PING" in message_body:
+            message = twilio_client.messages.create(
+                content_sid="HXc786b2eee71215839682f388b9208f8f",
+                to=body["From"],
+                from_=TWILIO_NUMBER,
+                messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
+                content_variables=json.dumps(
+                    {
+                        "1": exp_id
+                    }
+                )
+            )
+            return
+
     elif body["MessageType"] == "button":
         response = create_ping(body["From"])
         send_whatsapp_message(body, response)
@@ -387,6 +402,8 @@ def handle_whatsapp_message(body):
     
     if "FINISHED" in response:
         response = response.replace("FINISHED.", "").replace("FINISHED", "")
+        if len(response) == 0:
+            response = "Thank you for your chat today! Goodbye!"
     
     # print(response)
     # # Need to rewrite the message to only have one question
@@ -406,17 +423,12 @@ def handle_whatsapp_message(body):
         else:
             schedule_time = curr_time + datetime.timedelta(hours=48)
         message = twilio_client.messages.create(
-            content_sid="HXc786b2eee71215839682f388b9208f8f",
-            to=body["From"],
-            from_=TWILIO_NUMBER,
+            content_sid="HX9ae80743fa18e542af25d83c57a9e994",
+            to=body["From"].replace("whatsapp:", ""),
+            from_=TWILIO_SMS_NUMBER,
             messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
             send_at=schedule_time,
             schedule_type="fixed",
-            content_variables=json.dumps(
-                {
-                    "1": exp_id
-                }
-            )
         )
         all_scheduled_messages.append(message)
         print("SCHEDULED MESSAGE:", message)
@@ -590,13 +602,13 @@ def summarize_session(phone_number):
 
 
 if __name__ == "__main__":
-    import atexit
+    # import atexit
 
-    atexit.register(cancel_all_scheduled_messages)
+    # atexit.register(cancel_all_scheduled_messages)
 
     parser = ArgumentParser()
     parser.add_argument("--short", action="store_true")
     parser.add_argument("--empathy", action="store_true")
     args = parser.parse_args()
     
-    app.run(port=5000, debug=True, use_reloader=True)
+    app.run(port=55001, debug=True, use_reloader=True)
