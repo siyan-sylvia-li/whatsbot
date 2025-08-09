@@ -365,15 +365,10 @@ def handle_whatsapp_message(body):
                                                                   SESSION_ID=session_id)
         if "USER_PING" in message_body:
             message = twilio_client.messages.create(
-                content_sid="HXc786b2eee71215839682f388b9208f8f",
+                content_sid="HXf1ecfec77c71835b8522045749a825d5",
                 to=body["From"],
                 from_=TWILIO_NUMBER,
                 messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
-                content_variables=json.dumps(
-                    {
-                        "1": exp_id
-                    }
-                )
             )
             return
 
@@ -429,7 +424,7 @@ def handle_whatsapp_message(body):
         else:
             schedule_time = curr_time + datetime.timedelta(hours=48)
         message = twilio_client.messages.create(
-            content_sid="HX9ae80743fa18e542af25d83c57a9e994",
+            content_sid="HX031bd602333a47aac19947f0f6817916",
             to=body["From"].replace("whatsapp:", ""),
             from_=TWILIO_SMS_NUMBER,
             messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
