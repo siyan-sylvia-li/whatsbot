@@ -144,7 +144,7 @@ def compute_emp_condition(exp_condition, enroll_time):
     if exp_condition == 0:
         return [0, 1, 2, 0, 1, 2][num_weeks % 6]
     elif exp_condition == 1:
-        return [1, 0, 2, 1, 2, 0][num_weeks % 6]
+        return [1, 2, 0, 1, 2, 0][num_weeks % 6]
     else:
         return [2, 0, 1, 2, 0, 1][num_weeks % 6]
 
