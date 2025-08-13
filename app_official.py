@@ -154,7 +154,11 @@ def compute_emp_condition(exp_condition, enroll_time):
 
 # send the response as a WhatsApp message back to the user
 def send_whatsapp_message(body, message):
-    update_message_log(message, body["From"], "assistant")
+    if "||" in message:
+        update_message_log(message.split("||")[0], body["From"], "assistant")
+        message = message.replace("||", "")
+    else:
+        update_message_log(message, body["From"], "assistant")
     if twilio_client is None:
         print("ASSISTANT >>", message)
         return
@@ -255,18 +259,18 @@ def make_empathetic_response(message, from_number):
         remove_last_message_from_log(from_number)
     return response_message
 
-def make_stress_relief_response(message, from_number, non_empathetic=False, final_message=None):
+def make_stress_relief_response(message, from_number, non_empathetic=False):
     stress_relief_dict = json.load(open("stress_relief_logs.json"))
     try:
         message_log = update_message_log(message, from_number, "user")
         if stress_relief_dict[from_number] == 1:
             print("ROUND 2 STRESS RELIEF CONVERSATION")
-            cont, response_message = stress_relief.process_user_msg(message, from_number, message_log, non_empathetic, final_message)
+            cont, response_message = stress_relief.process_user_msg(message, from_number, message_log, non_empathetic)
             stress_relief_dict.update({from_number: cont})
             json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
         elif stress_relief_dict[from_number] == 2:
             print("ROUND 3 STRESS RELIEF CONVERSATION")
-            cont, response_message = stress_relief.process_user_feedback(message, from_number, message_log, non_empathetic, final_message)
+            cont, response_message = stress_relief.process_user_feedback(message, from_number, message_log, non_empathetic)
             stress_relief_dict.update({from_number: cont})
             json.dump(stress_relief_dict, open("stress_relief_logs.json", "w+"))
         else:
@@ -378,7 +382,7 @@ def handle_whatsapp_message(body):
         return
     emp_condition = compute_emp_condition(exp_condition, enroll_time)
     if stress_relief_dict.get(body["From"], False):
-        response = make_stress_relief_response(message_body, body["From"], non_empathetic=(emp_condition == 0), final_message=fin_google_message)
+        response = make_stress_relief_response(message_body, body["From"], non_empathetic=(emp_condition == 0))    
     elif body["From"] in session_log_dict and session_log_dict[body["From"]]["current_session"] > 1:
         if emp_condition == 0:
             response = make_openai_request(message_body, body["From"], non_empathetic=True)
@@ -401,10 +405,15 @@ def handle_whatsapp_message(body):
         else:
             response = make_openai_request(message_body, body["From"])
     
+
+    if "FINAL_MESSAGE" in response:
+        response = response.replace("\n\nFINAL_MESSAGE", "||\n\n" + fin_google_message)
+        response = response.replace("FINAL_MESSAGE", "||" + fin_google_message)
+
     if "FINISHED" in response:
         response = response.replace("FINISHED.", "").replace("FINISHED", "")
         if len(response) == 0:
-            response = "Thank you for your chat today! Goodbye!"
+            response = "Thank you for your chat today!\n\n" + fin_google_message
     
     # print(response)
     # # Need to rewrite the message to only have one question
