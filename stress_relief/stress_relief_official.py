@@ -86,6 +86,7 @@ class StressReliefModule:
                     "content": "The user is not feeling extremely stressed. Indicate that you are glad to hear that the user's stress level seems generally manageable, and then say goodbye to the user."
                 }
             ])[0]
+            response = response + "\n\nFINAL_MESSAGE"
             return False, response
         if user_id not in self.user_profile:
             self.user_profile.update({
@@ -147,6 +148,7 @@ class StressReliefModule:
                     "content": "Respond appropriately and say goodbye to the user, telling them that you will be checking in in two days."
                 }
             ])[0]
+            resp = resp + "\n\nFINAL_MESSAGE"
             return False, resp
         
         resp = "Can you please provide the specific rating of how helpful the practice was? Thank you!"

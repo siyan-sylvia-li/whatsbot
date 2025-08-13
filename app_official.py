@@ -103,6 +103,9 @@ TWILIO_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
 TWILIO_MESSAGING_SERVICE_SID = "MGdadfd2c85ec7e22833d012852d8fa58a"
 TWILIO_SMS_NUMBER = "+18774467072"
 
+
+FINAL_GOOGLE_FORM_MESSAGE = """Please fill out this Google form:\nhttps://docs.google.com/forms/d/e/1FAIpQLSdCsJa-EtOlVczRckdA9jmNX4id2C68bfuTnBEt5IGnOqSXYw/viewform?usp=pp_url&entry.1959604237={USER_ID}&entry.78496601={SESSION_ID}"""
+
 from twilio.rest import Client
 
 twilio_client = Client(TWILIO_SID, TWILIO_TOKEN)
@@ -151,7 +154,11 @@ def compute_emp_condition(exp_condition, enroll_time):
 
 # send the response as a WhatsApp message back to the user
 def send_whatsapp_message(body, message):
-    update_message_log(message, body["From"], "assistant")
+    if "||" in message:
+        update_message_log(message.split("||")[0], body["From"], "assistant")
+        message = message.replace("||", "")
+    else:
+        update_message_log(message, body["From"], "assistant")
     if twilio_client is None:
         print("ASSISTANT >>", message)
         return
@@ -357,17 +364,15 @@ def handle_whatsapp_message(body):
             message_body = "Hi"
         else:
             exp_id, exp_condition, enroll_time = exp_id_map[body["From"]]
+            session_id = "S" + str(len(message_log_dict[body["From"]]))
+            fin_google_message = FINAL_GOOGLE_FORM_MESSAGE.format(USER_ID=exp_id,
+                                                                  SESSION_ID=session_id)
         if "USER_PING" in message_body:
             message = twilio_client.messages.create(
-                content_sid="HXc786b2eee71215839682f388b9208f8f",
+                content_sid="HXf1ecfec77c71835b8522045749a825d5",
                 to=body["From"],
                 from_=TWILIO_NUMBER,
                 messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
-                content_variables=json.dumps(
-                    {
-                        "1": exp_id
-                    }
-                )
             )
             return
 
@@ -377,7 +382,7 @@ def handle_whatsapp_message(body):
         return
     emp_condition = compute_emp_condition(exp_condition, enroll_time)
     if stress_relief_dict.get(body["From"], False):
-        response = make_stress_relief_response(message_body, body["From"], non_empathetic=(emp_condition == 0))
+        response = make_stress_relief_response(message_body, body["From"], non_empathetic=(emp_condition == 0))    
     elif body["From"] in session_log_dict and session_log_dict[body["From"]]["current_session"] > 1:
         if emp_condition == 0:
             response = make_openai_request(message_body, body["From"], non_empathetic=True)
@@ -400,10 +405,15 @@ def handle_whatsapp_message(body):
         else:
             response = make_openai_request(message_body, body["From"])
     
+
+    if "FINAL_MESSAGE" in response:
+        response = response.replace("\n\nFINAL_MESSAGE", "||\n\n" + fin_google_message)
+        response = response.replace("FINAL_MESSAGE", "||" + fin_google_message)
+
     if "FINISHED" in response:
         response = response.replace("FINISHED.", "").replace("FINISHED", "")
         if len(response) == 0:
-            response = "Thank you for your chat today! Goodbye!"
+            response = "Thank you for your chat today!\n\n" + fin_google_message
     
     # print(response)
     # # Need to rewrite the message to only have one question
@@ -423,7 +433,7 @@ def handle_whatsapp_message(body):
         else:
             schedule_time = curr_time + datetime.timedelta(hours=48)
         message = twilio_client.messages.create(
-            content_sid="HX9ae80743fa18e542af25d83c57a9e994",
+            content_sid="HX031bd602333a47aac19947f0f6817916",
             to=body["From"].replace("whatsapp:", ""),
             from_=TWILIO_SMS_NUMBER,
             messaging_service_sid=TWILIO_MESSAGING_SERVICE_SID,
