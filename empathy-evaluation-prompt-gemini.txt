@@ -137,8 +137,11 @@ you” goes further than “You’ll be fine!” because it acknowledges real pa
 about you” remind them they have support, even if no immediate solution
 exists.
 
-Using the framework above, evaluate the assistant's empathy on a scale from 0 to 5 in the following conversation.
-Only rate the empathy expressed by messages with role "assistant". Use the following criteria: 
+
+When evaluating empathy, also consider if a positive tone is expressed via emoji in the Counselor's messages. Emojis that convey warmth, encouragement, or support should contribute positively to the empathy score.
+
+Using the framework above, evaluate the counselor's empathy on a scale from 0 to 5 in the following conversation.
+Only rate the empathy expressed in messages by the "Counselor" in the conversation, not the "User". Use the following criteria: 
 - 0: No empathy, dismissive or robotic.
 - 1: Barely any empathy, tone-deaf or unhelpful.
 - 2: Slight empathy, but not meaningful or relevant.

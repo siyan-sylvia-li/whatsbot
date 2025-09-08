@@ -3,6 +3,7 @@ import json
 import os
 import dotenv
 import google.generativeai as genai
+from scipy.stats import spearmanr
 
 dotenv.load_dotenv(".env")
 
@@ -33,6 +34,63 @@ INPUT_ROOT = os.path.join(os.getcwd(), "bot_chats")
 OUTPUT_ROOT = os.path.join(os.getcwd(), "evaluated_bot_chats")
 # change this to "gpt" or "gemini" to load LLM specific prompt
 PROMPT_TEMPLATE = load_prompt_template("gemini")
+
+
+def evaluate_exp_id_messages():
+  input_path = os.path.join(os.path.dirname(__file__), "exp_id_messages_tbe.json")
+  output_path = os.path.join(os.path.dirname(__file__), "exp_id_messages_tbe_evaluated.json")
+  prompt_template = load_prompt_template("gemini")
+
+  if not os.path.isfile(input_path):
+    print(f"{input_path} is missing, skipping...")
+    return
+
+  with open(input_path, "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+  result = {}
+  for user_name, conversations in data.items():
+    if user_name in ["SMZG", "NAWV"]:
+      continue
+    result[user_name] = []
+    for convo_obj in conversations:
+      if not isinstance(convo_obj, dict) or "conversation" not in convo_obj:
+        continue
+      required_keys = [
+        "I intend to follow, or continue to follow, the chatbot’s recommendation over the next 2 days",
+        "If I do intend to follow the chatbot's recommendation, I am confident that I can follow the recommendation over the next 2 days",
+        "I think the chatbot’s recommendation is useful for enhancing my physical activity"
+      ]
+      if not all(key in convo_obj for key in required_keys):
+        continue
+      convo_text = convo_obj["conversation"]
+      prompt = prompt_template.format(conversation=convo_text)
+      try:
+        model = genai.GenerativeModel("gemini-1.5-pro-latest")
+        generation_config = {
+          "temperature": 0.0,
+          "max_output_tokens": 5
+        }
+        response = model.generate_content(prompt, generation_config=generation_config)
+        score_str = response.text.strip().split()[0] if response.text.strip() else None
+        empathy_score = int(score_str) if score_str and score_str.isdigit() else None
+        if empathy_score is not None:
+          empathy_score = max(0, min(empathy_score, 5))
+      except Exception as e:
+        print(f"Error evaluating {user_name}: {e}")
+        empathy_score = None
+
+      # Copy all keys except 'original', add empathy score only
+      new_obj = {}
+      for k, v in convo_obj.items():
+        if k != "original":
+          new_obj[k] = v
+      new_obj["empathy_score"] = empathy_score
+      result[user_name].append(new_obj)
+
+  with open(output_path, "w", encoding="utf-8") as f:
+    json.dump(result, f, indent=2, ensure_ascii=False)
+  print(f"Saved evaluated exp_id messages to {output_path}")
 
 def format_conversation(convo_list): 
   lines = []
@@ -105,6 +163,53 @@ def process_round(round_path, round_name):
   
   print(f"Save evaluated file to output_path {output_path}")
 
+def compute_spearman_correlation(json_path):
+    if not os.path.isfile(json_path):
+        print(f"{json_path} is missing, skipping...")
+        return {}
+    
+    with open(json_path, "r") as f:
+        data = json.load(f)
+
+    results = {}
+    for user, convos in data.items():
+        empathy_scores = []
+        intent_scores = []
+        selfefficacy_scores = []
+        usefulness_scores = []
+
+        for convo in convos:
+            try:
+                empathy_scores.append(convo["empathy_score"])
+                intent_scores.append(convo["I intend to follow, or continue to follow, the chatbot’s recommendation over the next 2 days"])
+                selfefficacy_scores.append(convo["If I do intend to follow the chatbot's recommendation, I am confident that I can follow the recommendation over the next 2 days"])
+                usefulness_scores.append(convo["I think the chatbot’s recommendation is useful for enhancing my physical activity"])
+            except KeyError:
+                continue
+
+        # Only calculate if there are at least 2 data points
+        # it is guaranteed that len(empathy_scores) == len(intent_scores) == len(selfefficacy_scores) == len(usefulness_scores) since we checked required keys in the previous function
+        if len(empathy_scores) > 1:
+            results[user] = {
+                "spearman_empathy_intent": spearmanr(empathy_scores, intent_scores).correlation,
+                "spearman_empathy_selfefficacy": spearmanr(empathy_scores, selfefficacy_scores).correlation,
+                "spearman_empathy_usefulness": spearmanr(empathy_scores, usefulness_scores).correlation,
+                "n": len(empathy_scores)
+            }
+        else:
+            results[user] = "Not enough data"
+
+    # Save results to a new file in the same directory as the input json
+    output_path = os.path.join(os.path.dirname(json_path), "spearman_correlation_results.json")
+    with open(output_path, "w", encoding="utf-8") as f:
+      json.dump(results, f, indent=2, ensure_ascii=False)
+    print(f"Spearman correlation results saved to {output_path}")
+    return results
+
+# Example usage:
+# results = spearman_empathy_intent_selfefficacy("exp_id_messages_tbe_evaluated.json")
+# print(results)
+
 def main(): 
   if not os.path.exists(INPUT_ROOT): 
     print(f"INPUT folder {INPUT_ROOT} not found")
@@ -116,5 +221,7 @@ def main():
       process_round(round_path, entry)
 
 if __name__ == "__main__": 
-  main()
-  
+  # main()
+  # evaluate_exp_id_messages()
+  # NOTE-os.path.join(os.path.dirname(__file__), "exp_id_messages_tbe_evaluated.json") joins path of the "exp_id_messages_tbe_evaluated.json" file in the same directory as this script
+  compute_spearman_correlation(os.path.join(os.path.dirname(__file__), "exp_id_messages_tbe_evaluated.json"))
