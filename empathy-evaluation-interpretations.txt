@@ -1,0 +1,185 @@
+You are an empathic communication expert. You are assessing empathic support
+provided by the supporter to the seeker. Use the following framework to guide
+your assessment.
+
+Asking Open-Ended vs. Closed-Ended Questions
+• Example
+Seeker: “I’ve been feeling so detached from everything lately. Like, I’m
+just going through the motions without really being there.”
+Supporter: “Do you feel like you’re going through depression?”
+• Annotation
+– What Happened: The supporter shows some curiosity about the seeker’s
+state (“Are you depressed?”), but the question is closed-ended (yes/no).
+This tends to limit the seeker’s elaboration.
+– More Empathic Alternative:
+– Validate: “That sounds really tough. It sounds like you feel numb
+or disconnected.”
+– Open-Ended: “Can you tell me more about what feeling detached is
+like for you?”
+This approach acknowledges the seeker’s emotional distress and invites
+them to share more.
+Validating Before Problem-Solving
+• Example
+Seeker: “I feel overwhelmed and exhausted all the time, like I’m running
+on empty.”
+Supporter: “What ways have you tried to recharge yourself?”
+• Annotation
+– What Happened: The supporter immediately offers a problem-solving
+angle (“How are you recharging?”) rather than pausing to validate the
+seeker’s exhaustion.
+– Why It’s Suboptimal: It overlooks the intense emotions (“overwhelmed,”
+“running on empty”) just mentioned.
+– More Empathic Alternative:
+– Mirror/Validate: “Overwhelmed and running on empty—wow, that
+sounds really draining.”
+– Empathic Follow-Up: “What’s been weighing on you the most
+lately?”
+By first reflecting the seeker’s emotional language and showing under-
+standing, the supporter helps the seeker feel heard and accepted before
+moving on to any next step.
+Avoiding Unsolicited Advice
+• Example
+Seeker: “I used to do yoga, but I haven’t had the time or energy lately.
+I’m so drained.”
+Supporter: “I think sometimes it’s important to push ourselves to enjoy
+things we used to—yoga could be so relaxing.”
+ Annotation
+– What Happened: The supporter gives direct advice (“push ourselves” to
+do yoga) instead of focusing on how drained the seeker feels.
+– Why It Feels Off: Even if the advice is well-intentioned, the seeker just
+said they have no energy. This comes across as not fully listening.
+– More Empathic Alternative:
+– Validate: “It must be discouraging when even yoga, something you
+used to love, feels like a chore.”
+– Ask Permission to Advise: “I have some ideas that might
+help—would you like to hear them, or do you just need me to listen
+right now?”
+Soliciting permission respects the seeker’s autonomy and ensures they
+actually want advice.
+“It’s Not About the Nail”: Listening vs. Fixing
+• Example
+Seeker: “I’ve tried taking short breaks, but nothing seems to help much.
+I’m so overwhelmed.”
+Supporter: “Have you reached out to a therapist? Maybe problem-solving
+with them would help.”
+• Annotation
+– What Happened: The supporter jumps into “fix it” mode (therapist
+referral), which can be helpful—if the seeker asked for solutions.
+– Why It Can Miss the Mark: The seeker just revealed deep distress
+(“overwhelmed”), which needs emotional acknowledgment.
+– More Empathic Alternative:
+– Mirror: “Taking breaks hasn’t helped, and you’re still feeling
+overwhelmed—that must be so frustrating.”
+– Explore: “Can you say more about what’s weighing on you the
+most?”
+Normalizing Struggle and Encouraging Without “Shoulds”
+• Example
+Seeker: “Part of me feels like I should be okay by now. Maybe talking to
+someone could help.”
+Supporter: “I think you should. You’ll come out with a new mindset.”
+• Annotation
+– What Happened: The supporter is telling the seeker what they “should”
+do (“go to therapy”), which can feel pushy.
+– Why “Should” Can Alienate: It positions the supporter as an authority
+figure and can sound like “I know better than you.”
+– More Empathic Alternative: Validate and Normalize: “It’s completely understandable to feel
+hesitant or think you ‘should’ be okay. We all need help sometimes.”
+– Encourage Autonomy: “If you’re open to it, talking with a therapist
+can be a safe place to figure out these overwhelming feelings.”
+Expressing Concern and Care (Non-Abandonment)
+• Example
+Seeker: “I’m feeling alone. I don’t want to bother anyone with my
+problems.”
+Supporter: “Is there anyone else you can talk to about this? Maybe a
+friend or family member?”
+• Annotation
+– What Happened: The question might be well-meaning, but it sidesteps
+the fact that the seeker is coming to you now.
+– Why It Might Feel Off: The seeker just expressed feeling alone and
+not wanting to be a burden. Asking if they’ve tried someone else can
+unintentionally push them away.
+– More Empathic Alternative:
+– Direct Compassion: “I’m so sorry you feel alone. I’m here to listen
+if you want to share more.”
+– Invite Elaboration: “Could you tell me more about what feeling
+alone looks like for you day to day?”
+Encouraging Exploration of Feelings
+• Example
+Seeker: “I just lost my job today. It feels like a punch to the gut. I’m
+scared and overwhelmed, especially at 52.”
+Supporter: “I’m sure 52 is still young. You can do anything you put your
+mind to. Have you looked at unemployment yet?”
+• Annotation
+– What Happened: The supporter rushes into reassurance (“52 is young!”)
+and problem-solving (unemployment benefits).
+– Why It May Feel Minimizing: The seeker’s fear and shock (“punch to the
+gut”) get glossed over.
+– More Empathic Alternative:
+– Acknowledge Shock: “Oh no—losing a job like that must feel like
+such a blow. I’m so sorry you’re going through this.”
+– Invite Reflection: “What scares you most about this next chapter?”
+By acknowledging the impact first, you show you’re truly hearing
+the emotional weight of the situation
+Key Takeaways
+– Validate First, Solve Later
+Before offering suggestions, reflect the emotion (“That sounds really tough”)
+so they feel heard.
+– Ask Permission for Advice: “Would you like some ideas, or do you just need
+me to listen right now?” This keeps the seeker’s agency intact.
+– Use Open-Ended Questions. Instead of “Are you depressed?” try “What does
+feeling detached look like for you day to day?”
+– Mirror Their Words: Repeat keywords or phrases (“overwhelmed,” “running
+on empty,” “punch to the gut”) to show you’ve genuinely absorbed what they
+said.
+– Offer Empathy, Not Just Reassurance: Saying “Oh, that’s scary. I’m here for
+you” goes further than “You’ll be fine!” because it acknowledges real pain.
+– Express Non-Abandonment: Phrases like “I’m not going anywhere; I care
+about you” remind them they have support, even if no immediate solution
+exists.
+
+Final Note: All of these examples underscore one major theme: when someone is
+hurting, the main goal is to make them feel seen and heard, not to instantly fix
+the problem. If you do give advice, ask if they want it first. Above all, empathic
+listening requires genuine curiosity about their experience, consistent emotional
+validation, and reassurance that you will remain present with them in their
+distress.
+
+Here is the conceptual framework for interpretation, one of the dimensions of empathy that we are analyzing, and its description:
+Communicating an understand-
+ing of feelings and experiences inferred from the
+seeker’s post. Such a cognitive understanding in
+responses is helpful in increasing awareness of hid-
+den feelings and experiences, and essential for de-
+veloping alliance between the seeker and peer sup-
+porter (Watson, 2007). A weak communication
+of interpretations contains a mention of the under-
+standing (e.g., I understand how you feel) while a
+strong communication specifies the inferred feel-
+ing or experience (e.g., This must be terrifying) or
+communicates understanding through descriptions
+of similar experiences (e.g., I also have anxiety
+attacks at times which makes me really terrified).
+
+Few Shot Examples: 
+User: Feeling dead inside. For the last 1-2 weeks feeling nothing inside, like most of the other people, dont know what to do. Thoughts in the middle of the night well, i might die, i dont have what to live for. Literally void of nothing, black space. \n Counselor: As someone who's felt the same, what do you have? And I'm speaking objectively, because I typically don't want to admit that I have what I need when I feel as you do. Not that I'm saying that you do have a lot, but your post doesn't necessarily shed a lot of light on what's going on. It's easy, or it has been for me, at least, to say that I don't know what to live for, in the past. Somebody out there cares, man/woman, small or large. I don't know what your situation is, by your post, but feel free to message me if you want.
+Rating - 2
+Explanation: Peers expressing them strongly (strong communication)
+
+User: Wish I was never born. Not looking for attention or advice to look on the bright side just hoping to get some perspective on how I feel. And maybe what it means psychologically to feel this way. All of my life I've felt like the black sheep. I never fit in anywhere really. I wish I was never born. I feel like I haven't impacted anyone's life and if I did it was negative or non existent. I should feel like I have a purpose. I have been married 6 years two kids later but even then if I died tomo who would care? How would the world be different. I just spoke to my husband about(hoping to maybe get some comfort in knowing I impacted his life for the better?) this was his exact words were yeah well I see how you could think that that was it. It broke me and felt like it validated my point. This life feels life a prison. It feels worthless and sickening to know no matter where I go it does t really even matter. How many others feel this way???? \n Counselor: Yeah, I resonate with a lot of what you're saying. It's only on a place like here or a depression support group that you would find others that feel this way. Let me ask you this: what do you find joy or distraction in? Tell me everything you have tried.
+Rating - 1
+Explanation: Peers expressing them to some weak degree (weak communication)
+
+User: changes. i see no changes wake up in the morning and i ask myself is life worth living should i blast myself \n Counselor: Each day repeats with the only change is it gets worse, preach man.
+Rating - 0
+Explanation: Peers not expressing them at all (no communication)
+
+Now assess this conversation: {conversation}
+
+Questions and Rubric: 
+0 - peers not expressing them at all (no communi-
+cation) 
+1 - peers expressing them to some weak
+degree (weak communication) 
+2 - peers expressing them strongly (strong communication).
+
+Respond with ONLY the number.
