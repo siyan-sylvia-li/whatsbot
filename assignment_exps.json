@@ -36,5 +36,8 @@
   "RDSB":	1,
   "TISR":	2,
   "WESF":	0,
-  "WIGN":	1
+  "WIGN":	1,
+  "FWPR":	2,
+  "VHHL":	0,
+  "NVIU": 1
 }

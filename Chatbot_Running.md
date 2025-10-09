@@ -5,6 +5,6 @@ python app.py
 ```
 2. Run ngrok
 ```
-ngrok http --url=finally-thorough-stud.ngrok-free.app 5000
+ngrok http --url=finally-thorough-stud.ngrok-free.app 55001
 ```
 3. If needed, regenerate the access token through [this url](https://developers.facebook.com/apps/1288534942199607/whatsapp-business/wa-dev-console/?business_id=570788025952018)
